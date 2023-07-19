@@ -21,20 +21,32 @@ endforeach()
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(std_msgs REQUIRED)
 
 # Find Gazebo
 find_package(gazebo REQUIRED)
+find_package(gazebo_dev REQUIRED)
+find_package(gazebo_ros REQUIRED)
+
 include_directories(${GAZEBO_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 
 # Build our plugin
 add_library(no_physics_plugin SHARED no_physics_plugin/no_physics_plugin.cc)
+ament_target_dependencies(no_physics_plugin
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "std_msgs"
+)
 target_link_libraries(no_physics_plugin ${GAZEBO_LIBRARIES})
 
 
 # Include Cpp "include" directory
-include_directories(include)
+include_directories(include
+${gazebo_dev_INCLUDE_DIRS}
+${gazebo_ros_INCLUDE_DIRS})
 
 ## COMPILE
 add_library(
