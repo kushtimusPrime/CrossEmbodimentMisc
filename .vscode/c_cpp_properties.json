@@ -1,0 +1,30 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/kushtimusprime/cross_embodiment_test_ws/install/fk_ik_rviz_pkg/include/**",
+        "/home/kushtimusprime/ros2_ws/install/ros2_control_demo_example_9/include/**",
+        "/home/kushtimusprime/ros2_ws/install/ros2_control_demo_example_8/include/**",
+        "/home/kushtimusprime/ros2_ws/install/ros2_control_demo_example_6/include/**",
+        "/home/kushtimusprime/ros2_ws/install/ros2_control_demo_example_5/include/**",
+        "/home/kushtimusprime/ros2_ws/install/ros2_control_demo_example_4/include/**",
+        "/home/kushtimusprime/ros2_ws/install/ros2_control_demo_example_3/include/**",
+        "/home/kushtimusprime/ros2_ws/install/ros2_control_demo_example_2/include/**",
+        "/home/kushtimusprime/ros2_ws/install/ros2_control_demo_example_1/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/kushtimusprime/cross_embodiment_test_ws/src/fk_ik_rviz_pkg/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
