@@ -2,7 +2,7 @@
 
 Hi. Welcome to this test workspace for the cross embodiment project. This is currently in development.
 
-## Installation
+## Repo Setup
 ```
 mkdir -p ~/cross_embodiment_test_ws/src
 cd ~/cross_embodiment_test_ws
