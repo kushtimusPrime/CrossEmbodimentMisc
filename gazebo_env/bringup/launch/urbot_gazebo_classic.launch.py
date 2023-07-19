@@ -36,11 +36,15 @@ def generate_launch_description():
     # Initialize Arguments
     gui = LaunchConfiguration("gui")
 
-    gazebo = IncludeLaunchDescription(
+    gazebo_server = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [PathJoinSubstitution([FindPackageShare("gazebo_ros"), "launch", "gazebo.launch.py"])]
-        ),
-        launch_arguments={"verbose": "false"}.items(),
+            [PathJoinSubstitution([FindPackageShare("gazebo_ros"), "launch", "gzserver.launch.py"])]
+        )
+    )
+    gazebo_client = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            [PathJoinSubstitution([FindPackageShare("gazebo_ros"), "launch", "gzclient.launch.py"])]
+        )
     )
 
     # Get URDF via xacro
@@ -84,7 +88,8 @@ def generate_launch_description():
     )
 
     nodes = [
-        gazebo,
+        gazebo_server,
+        gazebo_client,
         node_robot_state_publisher,
         spawn_entity,
         joint_state_broadcaster_spawner,
