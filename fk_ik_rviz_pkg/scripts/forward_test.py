@@ -7,7 +7,7 @@ import time
 with PyBulletClient() as client:
     # TODO: Change hardcoded Python file
     file_path = pathlib.Path(__file__).parent.resolve()
-    urdf_filename = compas_fab.get('../../../../../../cross_embodiment_test_ws/src/fk_ik_rviz_pkg/scripts/pybullet_ur5_robotiq/pybullet_ur5_robotiq/urdf/ur5_robotiq_85.urdf')
+    urdf_filename = compas_fab.get('../../../../../../cross_embodiment_test_ws/src/fk_ik_rviz_pkg/scripts/ur5e.urdf')
     robot = client.load_robot(urdf_filename)
 
     configuration = Configuration.from_revolute_values([0,0,0,0,0,0,0])

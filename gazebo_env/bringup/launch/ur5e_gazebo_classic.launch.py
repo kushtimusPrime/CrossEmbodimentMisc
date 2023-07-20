@@ -53,7 +53,7 @@ def generate_launch_description():
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             PathJoinSubstitution(
-                [FindPackageShare("gazebo_env"), "urdf", "ur5e.urdf"]
+                [FindPackageShare("gazebo_env"), "urdf", "ur5e_gazebo.urdf"]
             ),
             " ",
             "use_gazebo_classic:=true",
