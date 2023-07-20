@@ -26,13 +26,16 @@ class EEPose(Node):
             10)
         msg = String()
         x = 0.6
-        y = 0
+        y = -0.2
         z = 0.525
         msg.data = str(x) + ' ' + str(y) + ' ' + str(z)
+        self.orientation_ = [[[1,0,0],[0,1,0]],[[0,0,-1],[0,1,0]],[[1,0,0],[0,0,1]]]
+        self.i = 0
         self.publisher_.publish(msg)
 
     def listener_callback(self, msg):
-        time.sleep(5)
+        print("IN HERE")
+        time.sleep(1)
         xyz_str = msg.data
         xyz_arr = xyz_str.split(' ')
         x = float(xyz_arr[0])
@@ -41,7 +44,11 @@ class EEPose(Node):
         with PyBulletClient() as client:
             urdf_filename = compas_fab.get('../../../../../../cross_embodiment_test_ws/install/gazebo_env/share/gazebo_env/urdf/ur5e_analytical.urdf')
             robot = client.load_robot(urdf_filename)
-            frame_WCF = Frame([x, y, z], [1,0,0], [0, 1,0])
+            print([x,y,z])
+            print(self.orientation_[self.i][0])
+            print(self.orientation_[self.i][1])
+            frame_WCF = Frame([x, y, z], self.orientation_[self.i][0], self.orientation_[self.i][1])
+            self.i += 1
             start_configuration = robot.zero_configuration()
 
             configuration = robot.inverse_kinematics(frame_WCF, start_configuration)

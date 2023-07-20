@@ -38,36 +38,72 @@ namespace gazebo
                 "forward_position_controller/commands",
                 qos.get_subscription_qos("forward_position_controller/commands", rclcpp::QoS(1)),
                 std::bind(&NoPhysicsPlugin::ControllerCommandMsg, this, std::placeholders::_1));
+      this->ee_pose_publisher_ = this->node_->create_publisher<std_msgs::msg::String>("ee_pose", 10);
     }
 
     void EEPoseMsg(const std_msgs::msg::String::SharedPtr msg) {
         if(!set_position_) {
-          std::cout << msg->data << std::endl;
-          std::cout << box_str[78] << std::endl;
-          std::cout << box_str[86] << std::endl;
-          box_str.replace(78, 7, msg->data);
-          std::cout << this->GetFilename() << std::endl;
+          current_box_str = original_box_str;
+          auto found_name = current_box_str.find("my_model1");
+          current_box_str.replace(found_name + 8,1,std::to_string(2 * i_ + 3));
+          red_box_name_ = current_box_str.substr(found_name,9);
+          auto found = current_box_str.find("<pose>");
+          current_box_str.replace(found+6, 5, msg->data);
+          
           physics::WorldPtr world = physics::get_world("default");
-          world->InsertModelString(box_str);
+          if(green_box_) {
+            world->RemoveModel(green_box_name_);
+            green_box_ = false;
+          }
+          world->InsertModelString(current_box_str);
           set_position_ = true;
         }
     }
 
     void ControllerCommandMsg(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
-      std::cout << "LETS GOOO" << std::endl;
+      green_box_name_ = red_box_name_;
+      green_box_name_.replace(name_length_-1,1,std::to_string(2 * i_ + 4));
+      auto found = current_box_str.find(red_box_name_);
+      current_box_str.replace(found, 9, green_box_name_);
+      auto found2 = current_box_str.find("Red");
+      current_box_str.replace(found2, 3, "Green");
+      physics::WorldPtr world = physics::get_world("default");
+      world->InsertModelString(current_box_str);
+      world->RemoveModel(red_box_name_);
+      green_box_ = true;
+      usleep(1000000);
+      set_position_ = false;
+      i_++;
+      std::cout << i_ << std::endl;
+      if(i_ < length_) {
+        std::string new_ee_pose = std::to_string(x[i_]) + " " + std::to_string(y[i_]) + " " + std::to_string(z[i_]);
+        auto message = std_msgs::msg::String();
+        message.data = new_ee_pose;
+        ee_pose_publisher_->publish(message);
+      }
     }
 
 
     private:
+      bool debug = false;
+      bool green_box_ = false;
+      std::string red_box_name_ = "my_model1";
+      std::string green_box_name_ = "";
+      int name_length_ = 9;
+      int i_ = -1;
+      int length_ = 2;
+      float x[2] = {0.4,-0.5};
+      float y[2] = {0.4,0.6};
+      float z[2] = {0.4,0.2};
       gazebo_ros::Node::SharedPtr node_;
       rclcpp::Subscription<std_msgs::msg::String>::SharedPtr ee_pose_subscriber_;
       rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr command_subscriber_;
+      rclcpp::Publisher<std_msgs::msg::String>::SharedPtr ee_pose_publisher_;
       bool set_position_ = false;
-
-      std::string box_str = "<?xml version='1.0'?>\n"
+      std::string original_box_str = "<?xml version='1.0'?>\n"
 "<sdf version=\"1.4\">\n"
-"  <model name=\"my_model\">\n"
-"    <pose>0 0 0.5 0 0 0</pose>\n"
+"  <model name=\"my_model1\">\n"
+"    <pose>0 0 0 0 0 0</pose>\n"
 "    <static>true</static>\n"
 "    <link name=\"link\">\n"
 "      <inertial>\n"
@@ -98,13 +134,15 @@ namespace gazebo
 "        <material>\n"
 "          <script>\n"
 "            <uri>file:///usr/share/gazebo-11/media/materials/scripts/gazebo.material</uri>\n"
-"            <name>Gazebo/Blue</name>\n"
+"            <name>Gazebo/Red</name>\n"
 "          </script>\n"
 "        </material>\n"
 "      </visual>\n"
 "    </link>\n"
 "  </model>\n"
 "</sdf>";
+      std::string current_box_str = original_box_str; 
+      
   };
 
   // Tell Gazebo about this plugin, so that Gazebo can call Load on this plugin.
