@@ -6,6 +6,7 @@
 #include <gazebo_ros/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 
 namespace gazebo
 {
@@ -28,13 +29,18 @@ namespace gazebo
       // Just output a message for now
       std::cerr << "NO PHYSICS" << "\n";
       _model->GetWorld()->SetPhysicsEnabled(false);
-      this->chatter_subscriber_ = this->node_->create_subscription<std_msgs::msg::String>(
+      this->ee_pose_subscriber_ = this->node_->create_subscription<std_msgs::msg::String>(
                 "ee_pose",
                 qos.get_subscription_qos("ee_pose", rclcpp::QoS(1)),
-                std::bind(&NoPhysicsPlugin::ChatterMsg, this, std::placeholders::_1));
+                std::bind(&NoPhysicsPlugin::EEPoseMsg, this, std::placeholders::_1));
+      
+      this->command_subscriber_ = this->node_->create_subscription<std_msgs::msg::Float64MultiArray>(
+                "forward_position_controller/commands",
+                qos.get_subscription_qos("forward_position_controller/commands", rclcpp::QoS(1)),
+                std::bind(&NoPhysicsPlugin::ControllerCommandMsg, this, std::placeholders::_1));
     }
 
-    void ChatterMsg(const std_msgs::msg::String::SharedPtr msg) {
+    void EEPoseMsg(const std_msgs::msg::String::SharedPtr msg) {
         if(!set_position_) {
           std::cout << msg->data << std::endl;
           std::cout << box_str[78] << std::endl;
@@ -47,10 +53,15 @@ namespace gazebo
         }
     }
 
+    void ControllerCommandMsg(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+      std::cout << "LETS GOOO" << std::endl;
+    }
+
 
     private:
       gazebo_ros::Node::SharedPtr node_;
-      rclcpp::Subscription<std_msgs::msg::String>::SharedPtr chatter_subscriber_;
+      rclcpp::Subscription<std_msgs::msg::String>::SharedPtr ee_pose_subscriber_;
+      rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr command_subscriber_;
       bool set_position_ = false;
 
       std::string box_str = "<?xml version='1.0'?>\n"
