@@ -53,10 +53,15 @@ def generate_launch_description():
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             PathJoinSubstitution(
-                [FindPackageShare("gazebo_env"), "urdf", "ur5e_gazebo.urdf"]
+               [FindPackageShare("gazebo_env"), "urdf", "ur5e_gazebo.urdf.xacro"]
             ),
             " ",
             "use_gazebo_classic:=true",
+            # PathJoinSubstitution([FindExecutable(name="xacro")]),
+            # " ",
+            # PathJoinSubstitution(
+            #     [FindPackageShare("gazebo_env"), "urdf", "d435.urdf"]
+            # ),
         ]
     )
     robot_description = {"robot_description": robot_description_content}
