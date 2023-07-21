@@ -32,23 +32,24 @@ namespace gazebo
       this->ee_pose_subscriber_ = this->node_->create_subscription<std_msgs::msg::String>(
                 "ee_pose",
                 qos.get_subscription_qos("ee_pose", rclcpp::QoS(1)),
-                std::bind(&NoPhysicsPlugin::EEPoseMsg, this, std::placeholders::_1));
+                std::bind(&NoPhysicsPlugin::eePoseMsg, this, std::placeholders::_1));
       
       this->command_subscriber_ = this->node_->create_subscription<std_msgs::msg::Float64MultiArray>(
                 "forward_position_controller/commands",
                 qos.get_subscription_qos("forward_position_controller/commands", rclcpp::QoS(1)),
-                std::bind(&NoPhysicsPlugin::ControllerCommandMsg, this, std::placeholders::_1));
+                std::bind(&NoPhysicsPlugin::controllerCommandMsg, this, std::placeholders::_1));
       this->ee_pose_publisher_ = this->node_->create_publisher<std_msgs::msg::String>("ee_pose", 10);
     }
 
-    void EEPoseMsg(const std_msgs::msg::String::SharedPtr msg) {
+    void eePoseMsg(const std_msgs::msg::String::SharedPtr msg) {
         if(!set_position_) {
-          current_box_str = original_box_str;
+          usleep(100000);
+          current_box_str = original_box_str_;
           auto found_name = current_box_str.find("my_model1");
           current_box_str.replace(found_name + 8,1,std::to_string(2 * i_ + 3));
           red_box_name_ = current_box_str.substr(found_name,9);
-          auto found = current_box_str.find("<pose>");
-          current_box_str.replace(found+6, 5, msg->data);
+          auto found_pose = current_box_str.find("<pose>");
+          current_box_str.replace(found_pose+6, 5, msg->data);
           
           physics::WorldPtr world = physics::get_world("default");
           if(green_box_) {
@@ -60,23 +61,23 @@ namespace gazebo
         }
     }
 
-    void ControllerCommandMsg(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+    void controllerCommandMsg(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
       green_box_name_ = red_box_name_;
       green_box_name_.replace(name_length_-1,1,std::to_string(2 * i_ + 4));
-      auto found = current_box_str.find(red_box_name_);
-      current_box_str.replace(found, 9, green_box_name_);
-      auto found2 = current_box_str.find("Red");
-      current_box_str.replace(found2, 3, "Green");
+      auto found_name = current_box_str.find(red_box_name_);
+      current_box_str.replace(found_name, 9, green_box_name_);
+      auto found_color = current_box_str.find("Red");
+      current_box_str.replace(found_color, 3, "Green");
       physics::WorldPtr world = physics::get_world("default");
       world->InsertModelString(current_box_str);
       world->RemoveModel(red_box_name_);
       green_box_ = true;
-      usleep(1000000);
+      usleep(3000000);
       set_position_ = false;
       i_++;
       std::cout << i_ << std::endl;
       if(i_ < length_) {
-        std::string new_ee_pose = std::to_string(x[i_]) + " " + std::to_string(y[i_]) + " " + std::to_string(z[i_]);
+        std::string new_ee_pose = std::to_string(x_[i_]) + " " + std::to_string(y_[i_]) + " " + std::to_string(z_[i_]);
         auto message = std_msgs::msg::String();
         message.data = new_ee_pose;
         ee_pose_publisher_->publish(message);
@@ -85,22 +86,21 @@ namespace gazebo
 
 
     private:
-      bool debug = false;
       bool green_box_ = false;
       std::string red_box_name_ = "my_model1";
       std::string green_box_name_ = "";
       int name_length_ = 9;
       int i_ = -1;
       int length_ = 2;
-      float x[2] = {0.4,-0.5};
-      float y[2] = {0.4,0.6};
-      float z[2] = {0.4,0.2};
+      float x_[2] = {0.4,-0.5};
+      float y_[2] = {0.4,0.6};
+      float z_[2] = {0.4,0.3};
       gazebo_ros::Node::SharedPtr node_;
       rclcpp::Subscription<std_msgs::msg::String>::SharedPtr ee_pose_subscriber_;
       rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr command_subscriber_;
       rclcpp::Publisher<std_msgs::msg::String>::SharedPtr ee_pose_publisher_;
       bool set_position_ = false;
-      std::string original_box_str = "<?xml version='1.0'?>\n"
+      std::string original_box_str_ = "<?xml version='1.0'?>\n"
 "<sdf version=\"1.4\">\n"
 "  <model name=\"my_model1\">\n"
 "    <pose>0 0 0 0 0 0</pose>\n"
@@ -141,7 +141,7 @@ namespace gazebo
 "    </link>\n"
 "  </model>\n"
 "</sdf>";
-      std::string current_box_str = original_box_str; 
+      std::string current_box_str = original_box_str_; 
       
   };
 
