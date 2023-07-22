@@ -34,3 +34,11 @@ ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiAr
 ```
 
 It should snap to the right position immediately, and not jitter.
+
+If you want to see the robot move to some different positions (indicated by red and green cubes, run the following:
+```
+cd ~/cross_embodiment_test_ws
+colcon build
+. install/setup.bash
+ros2 launch gazebo_env ur5e_gazebo_classic.launch.py
+```
