@@ -41,7 +41,7 @@ https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_desc
     <!-- Used for fixing robot -->
     <link name="world" />
     <xacro:sensor_d435 parent="world">
-        <origin xyz="1 1 0" rpy="0 0 -2.35619449" />
+        <origin xyz="1.5 1.5 1" rpy="0 0.5235987756 -2.35619449" />
     </xacro:sensor_d435>
     <joint name="base_joint" type="fixed">
         <origin rpy="0 0 0" xyz="0 0 0" />

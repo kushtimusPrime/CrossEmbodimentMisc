@@ -43,7 +43,6 @@ namespace gazebo
 
     void eePoseMsg(const std_msgs::msg::String::SharedPtr msg) {
         if(!set_position_) {
-          usleep(100000);
           current_box_str = original_box_str_;
           auto found_name = current_box_str.find("my_model1");
           current_box_str.replace(found_name + 8,1,std::to_string(2 * i_ + 3));
@@ -52,10 +51,16 @@ namespace gazebo
           current_box_str.replace(found_pose+6, 5, msg->data);
           
           physics::WorldPtr world = physics::get_world("default");
-          if(green_box_) {
+          /*if(green_box_) {
+            std::cout << "Green box name: " << green_box_name_ << std::endl;
+            physics::ModelPtr green_box_ptr = world->ModelByName(green_box_name_);
             world->RemoveModel(green_box_name_);
+            std::cout << "I removed" << std::endl;
+            green_box_ptr = nullptr;
+            std::cout << "Removed model" << std::endl;
             green_box_ = false;
-          }
+          }*/
+          std::cout << "Putting down red box" << std::endl;
           world->InsertModelString(current_box_str);
           set_position_ = true;
         }
@@ -70,12 +75,20 @@ namespace gazebo
       current_box_str.replace(found_color, 3, "Green");
       physics::WorldPtr world = physics::get_world("default");
       world->InsertModelString(current_box_str);
+      std::cout << "Inserting green box" << std::endl;
       world->RemoveModel(red_box_name_);
       green_box_ = true;
-      usleep(3000000);
       set_position_ = false;
       i_++;
       std::cout << i_ << std::endl;
+      usleep(1500000);
+      std::cout << "Removing now" << std::endl;
+      std::cout << "Green box name: " << green_box_name_ << std::endl;
+      physics::ModelPtr green_box_ptr = world->ModelByName(green_box_name_);
+      world->RemoveModel(green_box_name_);
+      std::cout << "I removed" << std::endl;
+      green_box_ptr = nullptr;
+      std::cout << "Removed model" << std::endl;
       if(i_ < length_) {
         std::string new_ee_pose = std::to_string(x_[i_]) + " " + std::to_string(y_[i_]) + " " + std::to_string(z_[i_]);
         auto message = std_msgs::msg::String();
@@ -91,10 +104,10 @@ namespace gazebo
       std::string green_box_name_ = "";
       int name_length_ = 9;
       int i_ = -1;
-      int length_ = 2;
-      float x_[2] = {0.4,-0.5};
-      float y_[2] = {0.4,0.6};
-      float z_[2] = {0.4,0.3};
+      int length_ = 3;
+      float x_[3] = {0.4,-0.5,0.817};
+      float y_[3] = {0.4,0.6,0.233};
+      float z_[3] = {0.4,0.3,0.063};
       gazebo_ros::Node::SharedPtr node_;
       rclcpp::Subscription<std_msgs::msg::String>::SharedPtr ee_pose_subscriber_;
       rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr command_subscriber_;
