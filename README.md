@@ -15,4 +15,4 @@ colcon build
 This package has python scripts to analyze URDFs to provide forward and inverse kinematics.
 
 ## Gazebo_Env
-This package will launch a UR5E robot in Gazebo. It has simulated hardware control so you can move the robot to the desired position.
+This package will launch a UR5E robot in Gazebo. It has simulated hardware control so you can move the robot to the desired position. A sample script is also provided to move the robot to some preplanned positions.
