@@ -3,15 +3,10 @@
     xmlns:xacro="http://ros.org/wiki/xacro">
     <xacro:include filename="$(find gazebo_env)/urdf/ur5e.urdf.xacro" />
     <xacro:include filename="$(find robotiq_description)/urdf/ur_to_robotiq_adapter.urdf.xacro" />
-    <link name="world" />
-    <xacro:ur5e parent="world">
-        <origin xyz="0 0 0" rpy="0 0 0" />
-    </xacro:ur5e>
+    <xacro:ur5e />
     <xacro:ur_to_robotiq prefix="" connected_to="tool0"/>
-    <!-- parameters -->
     <xacro:arg name="use_fake_hardware" default="true" />
 
-    <!-- Import macros -->
     <xacro:include filename="$(find robotiq_description)/urdf/robotiq_2f_85_macro.urdf.xacro" />
     <xacro:robotiq_gripper name="RobotiqGripperHardwareInterface" prefix="" parent="gripper_mount_link" use_fake_hardware="$(arg use_fake_hardware)">
         <origin xyz="0 0 0" rpy="0 0 0" />

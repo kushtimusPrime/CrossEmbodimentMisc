@@ -9,10 +9,10 @@ install/share/gazebo_env/urdf/rrbot.urdf.xacro | -->
 Copied and modified from ROS1 example -
 https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_description/urdf/rrbot.xacro
 -->
-<robot name="ur5e_robot"
+<robot name="2dof_robot"
     xmlns:xacro="http://ros.org/wiki/xacro">
-    <xacro:macro name="ur5e" params="parent *origin">
-
+    <xacro:macro name="ur5e">
+        <!-- <xacro:include filename="$(find gazebo_env)/urdf/d435.urdf.xacro" /> -->
         <material name="black">
             <color rgba="0.0 0.0 0.0 1.0" />
         </material>
@@ -41,6 +41,15 @@ https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_desc
             <color rgba="1.0 1.0 1.0 1.0" />
         </material>
         <!-- Used for fixing robot -->
+        <link name="world" />
+        <!-- <xacro:sensor_d435 parent="world">
+            <origin xyz="1.5 1.5 1" rpy="0 0.5235987756 -2.35619449" />
+        </xacro:sensor_d435> -->
+        <joint name="base_joint" type="fixed">
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <parent link="world" />
+            <child link="base_link" />
+        </joint>
         <!-- <link name="camera_link">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0" />
@@ -60,11 +69,6 @@ https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_desc
         <parent link="world" />
         <child link="camera_link" />
     </joint> -->
-        <joint name="world_to_base" type="fixed">
-            <xacro:insert_block name="origin" />
-            <parent link="${parent}" />
-            <child link="base_link" />
-        </joint>
         <link name="base_link" />
         <joint name="base_link-base_link_inertia" type="fixed">
             <parent link="base_link" />
@@ -361,6 +365,68 @@ https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_desc
             <inertia ixx="0.08416666666666667" ixy="0.0" ixz="0.0" iyy="0.08416666666666667" iyz="0.0" izz="0.001666666666666667" />
         </inertial>
     </link> -->
+        <ros2_control name="URBot" type="system">
+            <hardware>
+                <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+            </hardware>
+            <joint name="shoulder_pan_joint">
+                <command_interface name="position">
+                    <param name="min">{-2*pi}</param>
+                    <param name="max">{2*pi}</param>
+                </command_interface>
+                <state_interface name="position">
+                    <param name="initial_value">0.0</param>
+                </state_interface>
+            </joint>
+            <joint name="shoulder_lift_joint">
+                <command_interface name="position">
+                    <param name="min">{-2*pi}</param>
+                    <param name="max">{2*pi}</param>
+                </command_interface>
+                <state_interface name="position">
+                    <param name="initial_value">0</param>
+                </state_interface>
+            </joint>
+            <joint name="elbow_joint">
+                <command_interface name="position">
+                    <param name="min">{-pi}</param>
+                    <param name="max">{pi}</param>
+                </command_interface>
+                <state_interface name="position">
+                    <param name="initial_value">0.0</param>
+                </state_interface>
+            </joint>
+            <joint name="wrist_1_joint">
+                <command_interface name="position">
+                    <param name="min">{-2*pi}</param>
+                    <param name="max">{2*pi}</param>
+                </command_interface>
+                <state_interface name="position">
+                    <param name="initial_value">0</param>
+                </state_interface>
+            </joint>
+            <joint name="wrist_2_joint">
+                <command_interface name="position">
+                    <param name="min">{-2*pi}</param>
+                    <param name="max">{2*pi}</param>
+                </command_interface>
+                <state_interface name="position">
+                    <param name="initial_value">0</param>
+                </state_interface>
+            </joint>
+            <joint name="wrist_3_joint">
+                <command_interface name="position">
+                    <param name="min">{-2*pi}</param>
+                    <param name="max">{2*pi}</param>
+                </command_interface>
+                <state_interface name="position">
+                    <param name="initial_value">0</param>
+                </state_interface>
+            </joint>
+        </ros2_control>
+
+        
+        
         <!-- Link1 -->
         <gazebo reference="base_link_inertia">
             <material>Gazebo/Orange</material>

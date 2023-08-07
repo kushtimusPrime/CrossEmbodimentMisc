@@ -4,25 +4,13 @@
         name
         prefix
         parent
-        *origin
-        sim_ignition:=false
-        sim_isaac:=false
-        use_fake_hardware:=false
-        fake_sensor_commands:=false
-        include_ros2_control:=true
-        com_port:=/dev/ttyUSB0">
+        *origin sim_ignition:=false sim_isaac:=false use_fake_hardware:=false fake_sensor_commands:=false include_ros2_control:=true com_port:=/dev/ttyUSB0">
 
         <!-- ros2 control include -->
         <xacro:include filename="$(find robotiq_description)/urdf/robotiq_gripper.ros2_control.xacro" />
         <!-- if we are simulating or directly communicating with the gripper we need a ros2 control instance -->
         <xacro:if value="${include_ros2_control}">
-            <xacro:robotiq_gripper_ros2_control
-                name="${name}" prefix="${prefix}"
-                sim_ignition="${sim_ignition}"
-                sim_isaac="${sim_isaac}"
-                use_fake_hardware="${use_fake_hardware}"
-                fake_sensor_commands="${fake_sensor_commands}"
-                com_port="${com_port}"/>
+            <xacro:robotiq_gripper_ros2_control name="${name}" prefix="${prefix}" sim_ignition="${sim_ignition}" sim_isaac="${sim_isaac}" use_fake_hardware="${use_fake_hardware}" fake_sensor_commands="${fake_sensor_commands}" com_port="${com_port}"/>
         </xacro:if>
 
         <link name="${prefix}robotiq_85_base_link">
@@ -163,20 +151,20 @@
                 </geometry>
                 <surface>
                     <friction>
-                    <ode>
-                        <mu1>100000.0</mu1>
-                        <mu2>100000.0</mu2>
-                    </ode>
+                        <ode>
+                            <mu1>100000.0</mu1>
+                            <mu2>100000.0</mu2>
+                        </ode>
                     </friction>
                     <contact>
-                    <ode>
-                        <kp>1e+5</kp>
-                        <kd>1</kd>
-                        <soft_cfm>0</soft_cfm>
-                        <soft_erp>0.2</soft_erp>
-                        <minDepth>0.002</minDepth>
-                        <maxVel>0</maxVel>
-                    </ode>
+                        <ode>
+                            <kp>1e+5</kp>
+                            <kd>1</kd>
+                            <soft_cfm>0</soft_cfm>
+                            <soft_erp>0.2</soft_erp>
+                            <minDepth>0.002</minDepth>
+                            <maxVel>0</maxVel>
+                        </ode>
                     </contact>
                 </surface>
             </collision>
@@ -199,20 +187,20 @@
                 </geometry>
                 <surface>
                     <friction>
-                    <ode>
-                        <mu1>100000.0</mu1>
-                        <mu2>100000.0</mu2>
-                    </ode>
+                        <ode>
+                            <mu1>100000.0</mu1>
+                            <mu2>100000.0</mu2>
+                        </ode>
                     </friction>
                     <contact>
-                    <ode>
-                        <kp>1e+5</kp>
-                        <kd>1</kd>
-                        <soft_cfm>0</soft_cfm>
-                        <soft_erp>0.2</soft_erp>
-                        <minDepth>0.002</minDepth>
-                        <maxVel>0</maxVel>
-                    </ode>
+                        <ode>
+                            <kp>1e+5</kp>
+                            <kd>1</kd>
+                            <soft_cfm>0</soft_cfm>
+                            <soft_erp>0.2</soft_erp>
+                            <minDepth>0.002</minDepth>
+                            <maxVel>0</maxVel>
+                        </ode>
                     </contact>
                 </surface>
             </collision>
@@ -221,6 +209,18 @@
                 <mass value="4.268588744e-02" />
                 <inertia ixx="1.048152e-05" iyy="1.197888e-05" izz="4.22784e-06" ixy="0.0" ixz="-3.5232e-06" iyz="0.0" />
             </inertial>
+        </link>
+        <link name ="true_end_effector">
+            <!-- <visual>
+                <geometry>
+                    <sphere radius="0.01"/>
+                </geometry>
+            </visual>
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <mass value="4.268588744e-02" />
+                <inertia ixx="1.048152e-05" iyy="1.197888e-05" izz="4.22784e-06" ixy="0.0" ixz="-3.5232e-06" iyz="0.0" />
+            </inertial> -->
         </link>
 
         <joint name="${prefix}robotiq_85_base_joint" type="fixed">
@@ -235,6 +235,12 @@
             <axis xyz="0 -1 0" />
             <origin xyz="0.03060114 0.0 0.05490452" rpy="0 0 0" />
             <limit lower="0.0" upper="0.8" velocity="0.5" effort="50" />
+        </joint>
+
+        <joint name="dummy_ee_joint" type="fixed">
+            <parent link="${prefix}robotiq_85_base_link" />
+            <child link="true_end_effector" />
+            <origin xyz="0.0 0.0 0.098" rpy="0 0 0" />
         </joint>
 
         <joint name="${prefix}robotiq_85_right_knuckle_joint" type="revolute">
