@@ -6,6 +6,8 @@
 #include <gazebo_ros/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
+
 
 namespace gazebo
 {
@@ -28,17 +30,19 @@ namespace gazebo
       // Just output a message for now
       std::cerr << "KUSHTIMUS PRIME" << "]\n";
       _model->GetWorld()->SetPhysicsEnabled(false);
-      this->joint_subscriber_ = this->node_->create_subscription<std_msgs::msg::Float64>(
+      this->gripper_subscriber_ = this->node_->create_subscription<std_msgs::msg::Float64>(
                 "gripper_command",
                 qos.get_subscription_qos("gripper_command", rclcpp::QoS(1)),
-                std::bind(&ControlPlugin::jointMsg, this, std::placeholders::_1));
-      auto left_knuckle = _model->GetJoint("robotiq_85_left_inner_knuckle_joint");
-      std::cout << left_knuckle->Position() << std::endl;
+                std::bind(&ControlPlugin::gripperJointMsg, this, std::placeholders::_1));
+      this->robot_subscriber_ = this->node_->create_subscription<std_msgs::msg::Float64MultiArray>(
+                "robot_command",
+                qos.get_subscription_qos("robot_command", rclcpp::QoS(1)),
+                std::bind(&ControlPlugin::robotJointMsg, this, std::placeholders::_1));
     //   std::cout << left_knuckle->SetPosition(0,msg->data) << std::endl;
     //   std::cout << left_knuckle->Position() << std::endl;
     }
 
-    void jointMsg(const std_msgs::msg::Float64::SharedPtr msg) {
+    void gripperJointMsg(const std_msgs::msg::Float64::SharedPtr msg) {
         physics::WorldPtr world = physics::get_world("default");
         auto gripper_model_ptr = world->ModelByName(model_name_);
         auto left_knuckle = gripper_model_ptr->GetJoint("robotiq_85_left_knuckle_joint");
@@ -56,9 +60,28 @@ namespace gazebo
         right_finger->SetPosition(0,msg->data);
     }
 
+    void robotJointMsg(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+        physics::WorldPtr world = physics::get_world("default");
+        auto gripper_model_ptr = world->ModelByName(model_name_);
+        auto shoulder_pan_joint = gripper_model_ptr->GetJoint("shoulder_pan_joint");
+        auto shoulder_lift_joint = gripper_model_ptr->GetJoint("shoulder_lift_joint");
+        auto elbow_joint = gripper_model_ptr->GetJoint("elbow_joint");
+        auto wrist_1_joint = gripper_model_ptr->GetJoint("wrist_1_joint");
+        auto wrist_2_joint = gripper_model_ptr->GetJoint("wrist_2_joint");
+        auto wrist_3_joint = gripper_model_ptr->GetJoint("wrist_3_joint");
+
+        shoulder_pan_joint->SetPosition(0,msg->data[0]);
+        shoulder_lift_joint->SetPosition(0,-msg->data[1]);
+        elbow_joint->SetPosition(0,msg->data[2]);
+        wrist_1_joint->SetPosition(0,-msg->data[3]);
+        wrist_2_joint->SetPosition(0,-msg->data[4]);
+        wrist_3_joint->SetPosition(0,msg->data[5]);
+    }
+
     private:
         std::string model_name_;
-        rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr joint_subscriber_;
+        rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr gripper_subscriber_;
+        rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr robot_subscriber_;
         gazebo_ros::Node::SharedPtr node_;
   };
 
