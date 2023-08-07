@@ -15,7 +15,7 @@ class GripperClient(Node):
 
     def send_goal(self):
         goal_msg = GripperCommand.Goal()
-        goal_msg.command.position = 0.0
+        goal_msg.command.position = 0.4
         goal_msg.command.max_effort = 10.0
         print(goal_msg.command)
         print("I'm HIM")

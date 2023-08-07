@@ -13,6 +13,13 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(serial REQUIRED)
+find_package(gazebo REQUIRED)
+find_package(gazebo_dev REQUIRED)
+find_package(gazebo_ros REQUIRED)
+
+include_directories(${GAZEBO_INCLUDE_DIRS})
+link_directories(${GAZEBO_LIBRARY_DIRS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 
 set(THIS_PACKAGE_INCLUDE_DEPENDS
   ament_cmake
@@ -49,6 +56,18 @@ target_include_directories(gripper_interface_test PRIVATE include)
 ament_target_dependencies(gripper_interface_test serial)
 target_link_libraries(gripper_interface_test ${PROJECT_NAME})
 
+add_library(control_plugin SHARED control_plugin/control_plugin.cc)
+ament_target_dependencies(control_plugin
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "std_msgs"
+)
+target_link_libraries(control_plugin ${GAZEBO_LIBRARIES})
+
+include_directories(include
+${gazebo_dev_INCLUDE_DIRS}
+${gazebo_ros_INCLUDE_DIRS})
 # INSTALL
 install(
   TARGETS ${PROJECT_NAME}
