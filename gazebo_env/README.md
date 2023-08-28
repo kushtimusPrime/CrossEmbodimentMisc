@@ -42,3 +42,4 @@ colcon build
 . install/setup.bash
 ros2 launch gazebo_env ur5e_gazebo_classic.launch.py
 ```
+TODO: Add the thing about LD_LIBRARY_PATH, also changing the hardcoded parameters, also ros2 control installation

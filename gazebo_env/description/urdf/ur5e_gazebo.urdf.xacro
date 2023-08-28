@@ -10,7 +10,7 @@ Copied and modified from ROS1 example -
 https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_description/urdf/rrbot.xacro
 -->
 <robot name="2dof_robot" xmlns:xacro="http://ros.org/wiki/xacro">
-    <xacro:include filename="$(find gazebo_env)/urdf/d435.urdf.xacro" />
+    <!-- <xacro:include filename="$(find gazebo_env)/urdf/d435.urdf.xacro" />
     <material name="black">
         <color rgba="0.0 0.0 0.0 1.0" />
     </material>
@@ -37,12 +37,11 @@ https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_desc
     </material>
     <material name="white">
         <color rgba="1.0 1.0 1.0 1.0" />
-    </material>
-    <!-- Used for fixing robot -->
+    </material> -->
     <link name="world" />
-    <xacro:sensor_d435 parent="world">
+    <!-- <xacro:sensor_d435 parent="world">
         <origin xyz="1.5 1.5 1" rpy="0 0.5235987756 -2.35619449" />
-    </xacro:sensor_d435>
+    </xacro:sensor_d435> -->
     <joint name="base_joint" type="fixed">
         <origin rpy="0 0 0" xyz="0 0 0" />
         <parent link="world" />
@@ -478,7 +477,7 @@ https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_desc
     <gazebo>
         <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
             <parameters>
-                /home/kushtimusprime/cross_embodiment_test_ws/install/gazebo_env/share/gazebo_env/config/urbot_controllers.yaml
+                /home/benchturtle/cross_embodiment_ws/src/gazebo_env/bringup/config/urbot_controllers.yaml
             </parameters>
         </plugin>
     </gazebo>
