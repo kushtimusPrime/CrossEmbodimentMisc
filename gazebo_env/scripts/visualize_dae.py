@@ -1,14 +1,29 @@
 import open3d as o3d
 import trimesh
 import numpy as np
+import matplotlib.pyplot as plt
 # Load the .dae file
-collada_filepath = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/meshes/ur5e/visual/base.dae"
-mesh = trimesh.load(collada_filepath)
+collada_filepath = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/meshes/ur5e/visual/forearm.dae"
+mesh_scene = trimesh.load(collada_filepath)
+mesh = trimesh.util.concatenate(tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
+                                        for g in mesh_scene.geometry.values()))
+# Convert Trimesh to Open3D TriangleMesh
+vertices = o3d.utility.Vector3dVector(mesh.vertices)
+triangles = o3d.utility.Vector3iVector(mesh.faces)
+open3d_mesh = o3d.geometry.TriangleMesh(vertices, triangles)
+print(open3d_mesh.get_center())
+pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
+mesh_coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+    size=0.1, origin=[0,  0 ,0])
+# Create an Open3D visualization window
+o3d.visualization.draw_geometries([pcd,mesh_coordinate_frame])
+exit()
 o3d_mesh = None
 pcds = []
 points = None
-R = np.array([[1,0,0],[0,0,-1],[0,1,0]])
-R2 = np.array([[-1,0,0],[0,-1,0],[0,0,1]])
+#R = np.array([[1,0,0],[0,0,-1],[0,1,0]])
+#R2 = np.array([[-1,0,0],[0,-1,0],[0,0,1]])
 print(mesh)
 for item in mesh.geometry:
     o3d_mesh = mesh.geometry[item].as_open3d
@@ -21,15 +36,14 @@ for item in mesh.geometry:
     pcds.append(pcd)
 new_pcd = o3d.geometry.PointCloud()
 new_pcd.points = o3d.utility.Vector3dVector(points)
-new_pcd = new_pcd.rotate(R)
-new_pcd = new_pcd.rotate(R2)
+#new_pcd = new_pcd.rotate(R)
+#new_pcd = new_pcd.rotate(R2)
 new_pcd.points = o3d.utility.Vector3dVector(np.asarray(new_pcd.points) / 1000)
 #center_translation = -new_pcd.get_center()
 #new_pcd = new_pcd.translate(center_translation)
 #print(new_pcd.get_center())
 
-mesh_coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-    size=0.1, origin=[0.0001987,  0.09184108 ,0.00010422])
+
 o3d.visualization.draw_geometries([new_pcd,mesh_coordinate_frame])
 
 # mesh = trimesh.load(collada_filepath)

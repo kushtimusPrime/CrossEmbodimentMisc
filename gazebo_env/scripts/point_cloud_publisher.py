@@ -21,7 +21,7 @@ class PointCloudPublisher(Node):
 
     def __init__(self):
         super().__init__('point_cloud_publisher')
-        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo.urdf.xacro")
+        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo_pointcloud_debug.urdf.xacro")
         xacro_command = "ros2 run xacro xacro " + self.urdf_xacro_path_
         xacro_subprocess = subprocess.Popen(
             xacro_command,
@@ -59,7 +59,7 @@ class PointCloudPublisher(Node):
                             filename = mesh.attrib.get('filename')[7:]
                             publisher = self.create_publisher(PointCloud2,link_name+"_pointcloud",10)
                             self.publishers_.append(publisher)
-                            timer = self.create_timer(timer_period,partial(self.timerCallback,filename,link_name,publisher,rpy_str,xyz_str))
+                            timer = self.create_timer(timer_period,partial(self.debugTimerCallback,filename,link_name,publisher,rpy_str,xyz_str))
                             self.timers_.append(timer)
 
     def createTransform(self,rpy_str,xyz_str):
@@ -89,6 +89,37 @@ class PointCloudPublisher(Node):
         transform_matrix = np.concatenate((rotation_matrix,translation_vector),axis=1)
         transform_matrix = np.concatenate((transform_matrix,np.array([[0,0,0,1]])),axis=0)
         return transform_matrix
+
+    def debugTimerCallback(self,filename,link_name,publisher,rpy_str,xyz_str):
+        mesh_scene = trimesh.load(filename)
+        mesh = trimesh.util.concatenate(tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
+                                            for g in mesh_scene.geometry.values()))
+        # Convert Trimesh to Open3D TriangleMesh
+        vertices = o3d.utility.Vector3dVector(mesh.vertices)
+        triangles = o3d.utility.Vector3iVector(mesh.faces)
+        open3d_mesh = o3d.geometry.TriangleMesh(vertices, triangles)
+        pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+        pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
+        pcd_data = np.asarray(pcd.points)
+        pcd_data = pcd_data[:,[1,0,2]]
+        pcd_data[:,0] *= -1
+        point_cloud_msg = PointCloud2()
+        point_cloud_msg.header = Header()
+        point_cloud_msg.header.frame_id = link_name
+        fields =[PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+        PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+        PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+        ]
+        point_cloud_msg.height = 1
+        point_cloud_msg.width = len(pcd_data)
+        point_cloud_msg.fields = fields
+        point_cloud_msg.is_bigendian = False
+        point_cloud_msg.point_step = 3 * 4
+        point_cloud_msg.row_step = point_cloud_msg.point_step * len(pcd_data)
+        point_cloud_msg.is_dense = True
+        point_cloud_msg.data = bytearray(pcd_data.astype('float32').tobytes())
+
+        publisher.publish(point_cloud_msg)
 
     def timerCallback(self,filename,link_name,publisher,rpy_str,xyz_str):
 
