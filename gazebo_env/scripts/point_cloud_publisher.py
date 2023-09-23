@@ -21,7 +21,7 @@ class PointCloudPublisher(Node):
 
     def __init__(self):
         super().__init__('point_cloud_publisher')
-        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo_pointcloud_debug.urdf.xacro")
+        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo.urdf.xacro")
         xacro_command = "ros2 run xacro xacro " + self.urdf_xacro_path_
         xacro_subprocess = subprocess.Popen(
             xacro_command,
@@ -90,6 +90,17 @@ class PointCloudPublisher(Node):
         transform_matrix = np.concatenate((transform_matrix,np.array([[0,0,0,1]])),axis=0)
         return transform_matrix
 
+    def eulerToR(self,rpy_np):
+        rotation_x = rpy_np[0]
+        rotation_y = rpy_np[1]
+        rotation_z = rpy_np[2]
+        Rx = np.array([[1,0,0],[0,np.cos(rotation_x),-np.sin(rotation_x)],[0,np.sin(rotation_x),np.cos(rotation_x)]])
+        Ry = np.array([[np.cos(rotation_y),0,np.sin(rotation_y)],[0,1,0],[-np.sin(rotation_y),0,np.cos(rotation_y)]])
+        Rz = np.array([[np.cos(rotation_z),-np.sin(rotation_z),0],[np.sin(rotation_z),np.cos(rotation_z),0],[0,0,1]])
+        R = np.matmul(Rz,Ry)
+        R = np.matmul(R,Rx)
+        return R
+    
     def debugTimerCallback(self,filename,link_name,publisher,rpy_str,xyz_str):
         mesh_scene = trimesh.load(filename)
         mesh = trimesh.util.concatenate(tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
@@ -98,11 +109,156 @@ class PointCloudPublisher(Node):
         vertices = o3d.utility.Vector3dVector(mesh.vertices)
         triangles = o3d.utility.Vector3iVector(mesh.faces)
         open3d_mesh = o3d.geometry.TriangleMesh(vertices, triangles)
+        # pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+        # pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
+        # pcd_data = np.asarray(pcd.points)
+        # if(link_name == "base_link_inertia"):
+        #     pcd_data = pcd_data[:,[0,2,1]]
+        #     pcd_data[:,1] *= -1
+        # elif(link_name == "shoulder_link"):
+        #     # R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
+        #     # open3d_mesh.rotate(R,[0,0,0])
+        #     # # print("RPY")
+        #     # # print(rpy_str)
+        #     # # print("XYZ Str")
+        #     # # print(xyz_str)
+        #     # rpy_str_list = rpy_str.split()
+        #     # rpy_floats = [float(x) for x in rpy_str_list]
+        #     # rpy_np = np.array(rpy_floats)
+        #     # # print("RPY NUMPY")
+        #     # # print(rpy_np)
+        #     # R2 = pcd.get_rotation_matrix_from_xyz(rpy_np)
+        #     # # print("We have R2 with us")
+        #     # # print(R2)
+        #     # open3d_mesh.rotate(R2,[0,0,0])
+        #     # pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+        #     # pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
+        #     # pcd_data = np.asarray(pcd.points)
+        #     # #pcd_data = pcd_data[:,[0,2,1]]
+        #     # #pcd_data[:,0] *= -1
+
+        #     R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
+        #     open3d_mesh.rotate(R,[0,0,0])
+        #     # print("RPY")
+        #     # print(rpy_str)
+        #     # print("XYZ Str")
+        #     # print(xyz_str)
+        #     rpy_str_list = rpy_str.split()
+        #     rpy_floats = [float(x) for x in rpy_str_list]
+        #     rpy_np = np.array(rpy_floats)
+        #     xyz_str_list = xyz_str.split()
+        #     xyz_floats = [float(x) for x in xyz_str_list]
+        #     xyz_np = 1000 * np.array(xyz_floats)
+        #     print("XYZ NUMPY")
+        #     print(xyz_np)
+        #     R21 = pcd.get_rotation_matrix_from_xyz(rpy_np)
+        #     print("We have R21 with us")
+        #     print(R21)
+        #     R22 = pcd.get_rotation_matrix_from_xzy(rpy_np)
+        #     print("We have R22 with us")
+        #     print(R22)
+        #     R23 = pcd.get_rotation_matrix_from_yxz(rpy_np)
+        #     print("We have R23 with us")
+        #     print(R23)
+        #     R24 = pcd.get_rotation_matrix_from_yzx(rpy_np)
+        #     print("We have R24 with us")
+        #     print(R24)
+        #     R25 = pcd.get_rotation_matrix_from_zxy(rpy_np)
+        #     print("We have R25 with us")
+        #     print(R25)
+        #     R26 = pcd.get_rotation_matrix_from_zyx(rpy_np)
+        #     print("We have R26 with us")
+        #     print(R26)
+        #     R2 = self.eulerToR(rpy_np)
+        #     print("We have R2 with us")
+        #     print(R2)
+        #     open3d_mesh.rotate(R2,[0,0,0])
+        #     open3d_mesh.translate(xyz_np)
+        #     pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+        #     pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
+        #     pcd_data = np.asarray(pcd.points)
+        # elif(link_name == "upper_arm_link"):
+        #     R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
+        #     open3d_mesh.rotate(R,[0,0,0])
+        #     # print("RPY")
+        #     # print(rpy_str)
+        #     # print("XYZ Str")
+        #     # print(xyz_str)
+        #     rpy_str_list = rpy_str.split()
+        #     rpy_floats = [float(x) for x in rpy_str_list]
+        #     rpy_np = np.array(rpy_floats)
+        #     xyz_str_list = xyz_str.split()
+        #     xyz_floats = [float(x) for x in xyz_str_list]
+        #     xyz_np = 1000 * np.array(xyz_floats)
+        #     print("XYZ NUMPY")
+        #     print(xyz_np)
+        #     R21 = pcd.get_rotation_matrix_from_xyz(rpy_np)
+        #     print("We have R21 with us")
+        #     print(R21)
+        #     R22 = pcd.get_rotation_matrix_from_xzy(rpy_np)
+        #     print("We have R22 with us")
+        #     print(R22)
+        #     R23 = pcd.get_rotation_matrix_from_yxz(rpy_np)
+        #     print("We have R23 with us")
+        #     print(R23)
+        #     R24 = pcd.get_rotation_matrix_from_yzx(rpy_np)
+        #     print("We have R24 with us")
+        #     print(R24)
+        #     R25 = pcd.get_rotation_matrix_from_zxy(rpy_np)
+        #     print("We have R25 with us")
+        #     print(R25)
+        #     R26 = pcd.get_rotation_matrix_from_zyx(rpy_np)
+        #     print("We have R26 with us")
+        #     print(R26)
+        #     R2 = self.eulerToR(rpy_np)
+        #     print("We have R2 with us")
+        #     print(R2)
+        #     open3d_mesh.rotate(R2,[0,0,0])
+        #     open3d_mesh.translate(xyz_np)
+        #     pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+        #     pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
+        #     pcd_data = np.asarray(pcd.points)
+        # elif(link_name == "forearm_link"):
+        #     R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
+        #     open3d_mesh.rotate(R,[0,0,0])
+        #     rpy_str_list = rpy_str.split()
+        #     rpy_floats = [float(x) for x in rpy_str_list]
+        #     rpy_np = np.array(rpy_floats)
+        #     xyz_str_list = xyz_str.split()
+        #     xyz_floats = [float(x) for x in xyz_str_list]
+        #     xyz_np = 1000 * np.array(xyz_floats)
+        #     print("XYZ NUMPY")
+        #     print(xyz_np)
+        #     R2 = self.eulerToR(rpy_np)
+        #     print("We have R2 with us")
+        #     print(R2)
+        #     open3d_mesh.rotate(R2,[0,0,0])
+        #     open3d_mesh.translate(xyz_np)
+        #     pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+        #     pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
+        #     pcd_data = np.asarray(pcd.points)
+        #     #pcd_data = pcd_data[:,[1,0,2]]
+        #     #pcd_data[:,0] *= -1
+
+        R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
+        open3d_mesh.rotate(R,[0,0,0])
+        rpy_str_list = rpy_str.split()
+        rpy_floats = [float(x) for x in rpy_str_list]
+        rpy_np = np.array(rpy_floats)
+        xyz_str_list = xyz_str.split()
+        xyz_floats = [float(x) for x in xyz_str_list]
+        xyz_np = 1000 * np.array(xyz_floats)
+        print("XYZ NUMPY")
+        print(xyz_np)
+        R2 = self.eulerToR(rpy_np)
+        print("We have R2 with us")
+        print(R2)
+        open3d_mesh.rotate(R2,[0,0,0])
+        open3d_mesh.translate(xyz_np)
         pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
         pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
         pcd_data = np.asarray(pcd.points)
-        pcd_data = pcd_data[:,[1,0,2]]
-        pcd_data[:,0] *= -1
+
         point_cloud_msg = PointCloud2()
         point_cloud_msg.header = Header()
         point_cloud_msg.header.frame_id = link_name
