@@ -83,6 +83,10 @@ install(
   DESTINATION share/gazebo_env
 )
 install(
+  DIRECTORY ur5e_description
+  DESTINATION share/gazebo_env
+)
+install(
   DIRECTORY bringup/launch bringup/config
   DESTINATION share/gazebo_env
 )

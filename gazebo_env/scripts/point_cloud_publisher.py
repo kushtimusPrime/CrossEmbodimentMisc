@@ -5,7 +5,7 @@ from rclpy.node import Node
 import trimesh
 import open3d as o3d
 from std_msgs.msg import Header
-from sensor_msgs.msg import PointCloud2, PointField
+from sensor_msgs.msg import PointCloud2, PointField, CameraInfo, Image
 import numpy as np
 from launch_ros.substitutions import FindPackageShare
 from launch.substitutions import PathJoinSubstitution
@@ -15,13 +15,19 @@ import subprocess
 import xml.etree.ElementTree as ET
 from functools import partial
 import math
-
+from message_filters import TimeSynchronizer, Subscriber
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+from sensor_msgs_py import point_cloud2
+import cv2
+from cv_bridge import CvBridge
 
 class PointCloudPublisher(Node):
 
     def __init__(self):
         super().__init__('point_cloud_publisher')
-        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo.urdf.xacro")
+        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo_solo.urdf.xacro")
         xacro_command = "ros2 run xacro xacro " + self.urdf_xacro_path_
         xacro_subprocess = subprocess.Popen(
             xacro_command,
@@ -39,7 +45,20 @@ class PointCloudPublisher(Node):
                 break
         root = ET.fromstring(urdf_string)
         self.publishers_ = []
+        self.subscribers_ = []
         self.timers_ = []
+        self.tf_buffer_ = Buffer()
+        self.tf_listener_ = TransformListener(self.tf_buffer_, self)
+        self.camera_intrinsic_matrix_ = None
+        self.image_shape_ = None
+        self.camera_intrinsic_subscription_ = self.create_subscription(
+            CameraInfo,
+            '/camera/camera_info',
+            self.cameraInfoCallback,
+            10
+        )
+        self.cv_bridge_ = CvBridge()
+        self.mask_image_publisher_ = self.create_publisher(Image,"mask_image",10)
         timer_period = 0.5
         for link in root.iter('link'):
             element_name1 = "visual"
@@ -58,9 +77,54 @@ class PointCloudPublisher(Node):
                         for mesh in geometry.iter("mesh"):
                             filename = mesh.attrib.get('filename')[7:]
                             publisher = self.create_publisher(PointCloud2,link_name+"_pointcloud",10)
+                            publisher_camera = self.create_publisher(PointCloud2,link_name+"_pointcloud_camera",10)
                             self.publishers_.append(publisher)
-                            timer = self.create_timer(timer_period,partial(self.debugTimerCallback,filename,link_name,publisher,rpy_str,xyz_str))
+                            self.publishers_.append(publisher_camera)
+                            subscriber = Subscriber(self,PointCloud2,link_name+"_pointcloud")
+                            self.subscribers_.append(subscriber)
+                            timer = self.create_timer(timer_period,partial(self.debugTimerCallback,filename,link_name,publisher,publisher_camera,rpy_str,xyz_str))
                             self.timers_.append(timer)
+
+        print(len(self.publishers_))
+        print(len(self.subscribers_))
+        #exit()
+        self.sync_ = TimeSynchronizer(self.subscribers_,10)
+        self.sync_.registerCallback(self.pointcloud_callback)
+
+    def cameraInfoCallback(self,msg):
+        self.camera_intrinsic_matrix_ = np.array([[msg.k[0],msg.k[1],msg.k[2],0],[msg.k[3],msg.k[4],msg.k[5],0],[msg.k[6],msg.k[7],msg.k[8],0]])
+        self.image_shape_ = (msg.height,msg.width,3)
+
+    def pointcloud_callback(self,msg1,msg2,msg3,msg4,msg5,msg6,msg7):
+        if(self.camera_intrinsic_matrix_ is None):
+            return
+        else:
+
+            print(self.camera_intrinsic_matrix_)
+            msg1_pixels = self.getPixels(msg1)
+            msg2_pixels = self.getPixels(msg2)
+            msg3_pixels = self.getPixels(msg3)
+            msg4_pixels = self.getPixels(msg4)
+            msg5_pixels = self.getPixels(msg5)
+            msg6_pixels = self.getPixels(msg6)
+            msg7_pixels = self.getPixels(msg7)
+            all_pixels = np.vstack((msg1_pixels,msg2_pixels,msg3_pixels,msg4_pixels,msg5_pixels,msg6_pixels,msg7_pixels))
+            mask_image = np.zeros(self.image_shape_, dtype=np.uint8)
+            white_color = (255,255,255)
+            for coord in all_pixels:
+                x,y = coord
+                mask_image[round(y),round(x)] = white_color
+            #mask_image = cv2.convertScaleAbs(mask_image, alpha=(255.0/65535.0))
+            ros_mask_image = self.cv_bridge_.cv2_to_imgmsg(mask_image,encoding="bgr8")
+            self.mask_image_publisher_.publish(ros_mask_image)
+
+    def getPixels(self,msg):
+        msg_data = point_cloud2.read_points(msg)
+        msg_data = np.array([[item.tolist() for item in row] for row in msg_data])
+        msg_data_homogenous = np.hstack((msg_data,np.ones((msg_data.shape[0],1))))
+        pixel_data_homogenous = np.dot(self.camera_intrinsic_matrix_,msg_data_homogenous.T).T
+        pixel_data = pixel_data_homogenous[:,:2] / pixel_data_homogenous[:,2:]
+        return pixel_data
 
     def createTransform(self,rpy_str,xyz_str):
         rpy_array = rpy_str.split(' ')
@@ -101,7 +165,34 @@ class PointCloudPublisher(Node):
         R = np.matmul(R,Rx)
         return R
     
-    def debugTimerCallback(self,filename,link_name,publisher,rpy_str,xyz_str):
+    def transformStampedToMatrix(self,rotation,translation):
+        q0 = rotation.w
+        q1 = rotation.x
+        q2 = rotation.y
+        q3 = rotation.z
+        # First row of the rotation matrix
+        r00 = 2 * (q0 * q0 + q1 * q1) - 1
+        r01 = 2 * (q1 * q2 - q0 * q3)
+        r02 = 2 * (q1 * q3 + q0 * q2)
+        
+        # Second row of the rotation matrix
+        r10 = 2 * (q1 * q2 + q0 * q3)
+        r11 = 2 * (q0 * q0 + q2 * q2) - 1
+        r12 = 2 * (q2 * q3 - q0 * q1)
+        
+        # Third row of the rotation matrix
+        r20 = 2 * (q1 * q3 - q0 * q2)
+        r21 = 2 * (q2 * q3 + q0 * q1)
+        r22 = 2 * (q0 * q0 + q3 * q3) - 1
+        t_matrix = np.array(
+            [[r00, r01, r02,translation.x * 1000],
+             [r10, r11, r12,translation.y * 1000],
+             [r20, r21, r22,translation.z * 1000],
+             [0,0,0,1]]
+        )
+        return t_matrix
+    
+    def debugTimerCallback(self,filename,link_name,publisher,publisher_camera,rpy_str,xyz_str):
         mesh_scene = trimesh.load(filename)
         mesh = trimesh.util.concatenate(tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
                                             for g in mesh_scene.geometry.values()))
@@ -248,20 +339,30 @@ class PointCloudPublisher(Node):
         xyz_str_list = xyz_str.split()
         xyz_floats = [float(x) for x in xyz_str_list]
         xyz_np = 1000 * np.array(xyz_floats)
-        print("XYZ NUMPY")
-        print(xyz_np)
         R2 = self.eulerToR(rpy_np)
-        print("We have R2 with us")
-        print(R2)
         open3d_mesh.rotate(R2,[0,0,0])
         open3d_mesh.translate(xyz_np)
-        pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+        try:
+            t = self.tf_buffer_.lookup_transform(
+                "camera_color_optical_frame",
+                link_name,
+                rclpy.time.Time()
+            )
+            print(link_name)
+            print(t)
+            t_matrix = self.transformStampedToMatrix(t.transform.rotation,t.transform.translation)
+            print(open3d_mesh.get_center())
+            open3d_mesh.transform(t_matrix)
+            print(open3d_mesh.get_center())
+        except TransformException as ex:
+            return
+        pcd = open3d_mesh.sample_points_uniformly(number_of_points=10000)
         pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
         pcd_data = np.asarray(pcd.points)
 
         point_cloud_msg = PointCloud2()
         point_cloud_msg.header = Header()
-        point_cloud_msg.header.frame_id = link_name
+        point_cloud_msg.header.frame_id = "camera_color_optical_frame"
         fields =[PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
         PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
         PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
@@ -274,7 +375,7 @@ class PointCloudPublisher(Node):
         point_cloud_msg.row_step = point_cloud_msg.point_step * len(pcd_data)
         point_cloud_msg.is_dense = True
         point_cloud_msg.data = bytearray(pcd_data.astype('float32').tobytes())
-
+        print("We pubbed")
         publisher.publish(point_cloud_msg)
 
     def timerCallback(self,filename,link_name,publisher,rpy_str,xyz_str):
