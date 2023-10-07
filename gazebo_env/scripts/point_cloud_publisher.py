@@ -85,8 +85,6 @@ class PointCloudPublisher(Node):
                             timer = self.create_timer(timer_period,partial(self.debugTimerCallback,filename,link_name,publisher,publisher_camera,rpy_str,xyz_str))
                             self.timers_.append(timer)
 
-        print(len(self.publishers_))
-        print(len(self.subscribers_))
         #exit()
         self.sync_ = TimeSynchronizer(self.subscribers_,10)
         self.sync_.registerCallback(self.pointcloud_callback)
@@ -99,8 +97,6 @@ class PointCloudPublisher(Node):
         if(self.camera_intrinsic_matrix_ is None):
             return
         else:
-
-            print(self.camera_intrinsic_matrix_)
             msg1_pixels = self.getPixels(msg1)
             msg2_pixels = self.getPixels(msg2)
             msg3_pixels = self.getPixels(msg3)
@@ -348,12 +344,8 @@ class PointCloudPublisher(Node):
                 link_name,
                 rclpy.time.Time()
             )
-            print(link_name)
-            print(t)
             t_matrix = self.transformStampedToMatrix(t.transform.rotation,t.transform.translation)
-            print(open3d_mesh.get_center())
             open3d_mesh.transform(t_matrix)
-            print(open3d_mesh.get_center())
         except TransformException as ex:
             return
         pcd = open3d_mesh.sample_points_uniformly(number_of_points=10000)
@@ -375,7 +367,6 @@ class PointCloudPublisher(Node):
         point_cloud_msg.row_step = point_cloud_msg.point_step * len(pcd_data)
         point_cloud_msg.is_dense = True
         point_cloud_msg.data = bytearray(pcd_data.astype('float32').tobytes())
-        print("We pubbed")
         publisher.publish(point_cloud_msg)
 
     def timerCallback(self,filename,link_name,publisher,rpy_str,xyz_str):
