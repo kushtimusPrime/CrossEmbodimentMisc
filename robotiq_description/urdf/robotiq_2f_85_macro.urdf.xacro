@@ -37,7 +37,7 @@
             </inertial>
         </link>
 
-        <!-- <joint name="${prefix}robotiq_85_left_knuckle_joint" type="revolute">
+        <joint name="${prefix}robotiq_85_left_knuckle_joint" type="revolute">
             <parent link="${prefix}robotiq_85_base_link" />
             <child link="${prefix}robotiq_85_left_knuckle_link" />
             <axis xyz="0 -1 0" />
@@ -64,9 +64,9 @@
                 <inertia ixx="3.5232e-7" iyy="2.31944e-6" izz="2.23136e-6" ixy="0.0" ixz="1.1744e-7"
                     iyz="0" />
             </inertial>
-        </link> -->
+        </link>
 
-        <!-- <link name="${prefix}robotiq_85_right_knuckle_link">
+        <link name="${prefix}robotiq_85_right_knuckle_link">
             <visual>
                 <geometry>
                     <mesh
@@ -308,7 +308,7 @@
             <axis xyz="0 -1 0" />
             <origin xyz="-0.00563134 0.0 0.04718515" rpy="0 0 0" />
             <mimic joint="${prefix}robotiq_85_left_knuckle_joint" />
-        </joint> -->
+        </joint>
         <gazebo>
             <plugin name="gripper_control" filename="libcontrol_plugin.so" />
         </gazebo>
