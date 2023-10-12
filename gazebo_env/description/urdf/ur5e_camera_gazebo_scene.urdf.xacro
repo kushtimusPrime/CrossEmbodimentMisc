@@ -17,6 +17,7 @@ https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_desc
         <origin xyz="0 0 0" rpy="0 0 0" />
     </xacro:ur5e>
     <xacro:sensor_d435 parent="world">
-        <origin xyz="1.5 1.5 1" rpy="0 0.5235987756 -2.35619449" />
+        <origin xyz="1.5 1.5 1" rpy="0 0.4405106 -2.3561945" />
+        <!-- <origin xyz="-1 0 0" rpy="0 3.1415927 1.5707963" /> -->
     </xacro:sensor_d435>
 </robot>
