@@ -27,7 +27,7 @@ class PointCloudPublisher(Node):
 
     def __init__(self):
         super().__init__('point_cloud_publisher')
-        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo_solo.urdf.xacro")
+        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_with_gripper.urdf.xacro")
         xacro_command = "ros2 run xacro xacro " + self.urdf_xacro_path_
         xacro_subprocess = subprocess.Popen(
             xacro_command,
