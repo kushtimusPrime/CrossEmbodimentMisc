@@ -24,10 +24,9 @@ import cv2
 from cv_bridge import CvBridge
 
 class PointCloudPublisher(Node):
-
     def __init__(self):
         super().__init__('point_cloud_publisher')
-        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_with_gripper.urdf.xacro")
+        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo_solo.urdf.xacro")
         xacro_command = "ros2 run xacro xacro " + self.urdf_xacro_path_
         xacro_subprocess = subprocess.Popen(
             xacro_command,
@@ -61,6 +60,7 @@ class PointCloudPublisher(Node):
         self.mask_image_publisher_ = self.create_publisher(Image,"mask_image",10)
         timer_period = 0.5
         self.links_info_ = []
+        
         for link in root.iter('link'):
             element_name1 = "visual"
             found_element1 = link.find(".//" + element_name1)
@@ -86,6 +86,7 @@ class PointCloudPublisher(Node):
                             self.links_info_.append([filename,link_name,rpy_str,xyz_str])
                             #timer = self.create_timer(timer_period,partial(self.debugTimerCallback,filename,link_name,publisher,publisher_camera,rpy_str,xyz_str))
                             #self.timers_.append(timer)
+        
         self.full_publisher_ = self.create_publisher(PointCloud2,"full_pointcloud",10)
         self.full_subscriber_ = self.create_subscription(PointCloud2,'full_pointcloud',self.fullPointcloudCallback,10)
         self.full_mask_image_publisher_ = self.create_publisher(Image,"full_mask_image",10)
@@ -107,16 +108,16 @@ class PointCloudPublisher(Node):
 
 
     def setupMeshes(self):
-        open3d_mesh = None
+        open3d_mesh = None        
+        
         for [filename,link_name,rpy_str,xyz_str] in self.links_info_:
             if open3d_mesh is None:
                 open3d_mesh = self.setupMesh(filename,link_name,rpy_str,xyz_str)
             else:
                 open3d_mesh += self.setupMesh(filename,link_name,rpy_str,xyz_str)
-        pcd = open3d_mesh.sample_points_uniformly(number_of_points=20000)
+        pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
         pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
         pcd_data = np.asarray(pcd.points)
-
         point_cloud_msg = PointCloud2()
         point_cloud_msg.header = Header()
         point_cloud_msg.header.frame_id = "camera_color_optical_frame"
@@ -144,7 +145,6 @@ class PointCloudPublisher(Node):
         vertices = o3d.utility.Vector3dVector(mesh.vertices)
         triangles = o3d.utility.Vector3iVector(mesh.faces)
         open3d_mesh = o3d.geometry.TriangleMesh(vertices, triangles)
-
         R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
         open3d_mesh.rotate(R,[0,0,0])
         rpy_str_list = rpy_str.split()
@@ -156,6 +156,7 @@ class PointCloudPublisher(Node):
         R2 = self.eulerToR(rpy_np)
         open3d_mesh.rotate(R2,[0,0,0])
         open3d_mesh.translate(xyz_np)
+        # REQUIRES CAMERA TO BE IN GAZEBO SCENE
         try:
             t = self.tf_buffer_.lookup_transform(
                 "camera_color_optical_frame",
@@ -427,7 +428,7 @@ class PointCloudPublisher(Node):
             open3d_mesh.transform(t_matrix)
         except TransformException as ex:
             return
-        pcd = open3d_mesh.sample_points_uniformly(number_of_points=10000)
+        pcd = open3d_mesh.sample_points_uniformly(number_of_points=100)
         pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
         pcd_data = np.asarray(pcd.points)
 

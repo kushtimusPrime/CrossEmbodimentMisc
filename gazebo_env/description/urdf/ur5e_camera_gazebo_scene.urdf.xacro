@@ -16,7 +16,7 @@ https://github.com/ros-simulation/gazebo_ros_demos/blob/kinetic-devel/rrbot_desc
     <link name="world" />
     <xacro:ur5e parent="world">
         <origin xyz="0 0 0" rpy="0 0 0" />
-    </xacro:ur5e>
+    </xacro:ur5e> 
     <xacro:ur_to_robotiq prefix="" connected_to="tool0"/>
     <xacro:arg name="use_fake_hardware" default="true" />
     <xacro:include filename="$(find robotiq_description)/urdf/robotiq_2f_85_macro.urdf.xacro" />

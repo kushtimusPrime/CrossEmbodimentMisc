@@ -3,22 +3,22 @@ import trimesh
 import numpy as np
 import matplotlib.pyplot as plt
 # Load the .dae file
-collada_filepath = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/meshes/ur5e/visual/shoulder.dae"
-mesh_scene = trimesh.load(collada_filepath)
+filename = "/home/benchturtle/cross_embodiment_ws/install/robotiq_description/share/robotiq_description/meshes/visual/ur_to_robotiq_adapter.dae"
+mesh_scene = trimesh.load(filename)
 mesh = trimesh.util.concatenate(tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
-                                        for g in mesh_scene.geometry.values()))
+                                    for g in mesh_scene.geometry.values()))
 # Convert Trimesh to Open3D TriangleMesh
 vertices = o3d.utility.Vector3dVector(mesh.vertices)
 triangles = o3d.utility.Vector3iVector(mesh.faces)
 open3d_mesh = o3d.geometry.TriangleMesh(vertices, triangles)
+print(open3d_mesh)
 R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
 open3d_mesh.rotate(R,[0,0,0])
-pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+pcd = open3d_mesh.sample_points_uniformly(number_of_points=20000)
 pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
-mesh_coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-    size=0.1, origin=[0,0,0])
+pcd_data = np.asarray(pcd.points)
 # Create an Open3D visualization window
-o3d.visualization.draw_geometries([pcd,mesh_coordinate_frame])
+o3d.visualization.draw_geometries([pcd])
 exit()
 o3d_mesh = None
 pcds = []
