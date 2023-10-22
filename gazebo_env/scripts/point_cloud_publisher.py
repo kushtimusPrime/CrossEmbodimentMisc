@@ -26,7 +26,7 @@ from cv_bridge import CvBridge
 class PointCloudPublisher(Node):
     def __init__(self):
         super().__init__('point_cloud_publisher')
-        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_gazebo_solo.urdf.xacro")
+        self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","ur5e_nvidia_with_gripper_solo.urdf.xacro")
         xacro_command = "ros2 run xacro xacro " + self.urdf_xacro_path_
         xacro_subprocess = subprocess.Popen(
             xacro_command,
@@ -102,6 +102,7 @@ class PointCloudPublisher(Node):
         for coord in all_pixels:
             x,y = coord
             mask_image[round(y),round(x)] = white_color
+        cv2.imwrite('/home/benchturtle/gazebo_mask.jpg',mask_image)
         #mask_image = cv2.convertScaleAbs(mask_image, alpha=(255.0/65535.0))
         ros_mask_image = self.cv_bridge_.cv2_to_imgmsg(mask_image,encoding="bgr8")
         self.full_mask_image_publisher_.publish(ros_mask_image)
@@ -115,7 +116,9 @@ class PointCloudPublisher(Node):
                 open3d_mesh = self.setupMesh(filename,link_name,rpy_str,xyz_str)
             else:
                 open3d_mesh += self.setupMesh(filename,link_name,rpy_str,xyz_str)
-        pcd = open3d_mesh.sample_points_uniformly(number_of_points=100000)
+        # import pdb
+        # pdb.set_trace()
+        pcd = open3d_mesh.sample_points_uniformly(number_of_points=1000000)
         pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
         pcd_data = np.asarray(pcd.points)
         point_cloud_msg = PointCloud2()
@@ -145,8 +148,20 @@ class PointCloudPublisher(Node):
         vertices = o3d.utility.Vector3dVector(mesh.vertices)
         triangles = o3d.utility.Vector3iVector(mesh.faces)
         open3d_mesh = o3d.geometry.TriangleMesh(vertices, triangles)
-        R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
-        open3d_mesh.rotate(R,[0,0,0])
+        test_pcd = open3d_mesh.sample_points_uniformly(number_of_points=500)
+        test_pcd_data = np.asarray(test_pcd.points)
+        diff = max(np.max(test_pcd_data[:, 0]) - np.min(test_pcd_data[:, 0]),np.max(test_pcd_data[:, 1]) - np.min(test_pcd_data[:, 1]),np.max(test_pcd_data[:, 2]) - np.min(test_pcd_data[:, 2]))
+        # Checks to make sure units are in mm instead of m (We convert uniformly to meters later)
+        if(diff < 1):
+            open3d_mesh.vertices = o3d.utility.Vector3dVector(np.asarray(open3d_mesh.vertices) * 1000)
+        #center = np.mean(test_pcd_data, axis=0)
+        #coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0,0,0])
+        #import pdb
+        #pdb.set_trace()
+        #o3d.visualization.draw_geometries([test_pcd,coordinate_frame])
+        else:
+            R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
+            open3d_mesh.rotate(R,[0,0,0])
         rpy_str_list = rpy_str.split()
         rpy_floats = [float(x) for x in rpy_str_list]
         rpy_np = np.array(rpy_floats)
@@ -157,17 +172,20 @@ class PointCloudPublisher(Node):
         open3d_mesh.rotate(R2,[0,0,0])
         open3d_mesh.translate(xyz_np)
         # REQUIRES CAMERA TO BE IN GAZEBO SCENE
-        try:
-            t = self.tf_buffer_.lookup_transform(
-                "camera_color_optical_frame",
-                link_name,
-                rclpy.time.Time()
-            )
-            t_matrix = self.transformStampedToMatrix(t.transform.rotation,t.transform.translation)
-            open3d_mesh.transform(t_matrix)
-        except TransformException as ex:
-            return
-        return open3d_mesh
+        while True:
+            try:
+                t = self.tf_buffer_.lookup_transform(
+                    "camera_color_optical_frame",
+                    link_name,
+                    rclpy.time.Time(),
+                )
+                t_matrix = self.transformStampedToMatrix(t.transform.rotation,t.transform.translation)
+                open3d_mesh.transform(t_matrix)
+                return open3d_mesh
+            except TransformException as ex:
+                #TODO Change This
+                pass
+                #print("Error finding transform between camera frame and " + str(link_name))
 
     def cameraInfoCallback(self,msg):
         self.camera_intrinsic_matrix_ = np.array([[msg.k[0],msg.k[1],msg.k[2],0],[msg.k[3],msg.k[4],msg.k[5],0],[msg.k[6],msg.k[7],msg.k[8],0]])

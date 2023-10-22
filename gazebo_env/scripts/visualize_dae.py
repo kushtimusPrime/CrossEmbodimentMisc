@@ -64,7 +64,6 @@ o3d.visualization.draw_geometries([new_pcd,mesh_coordinate_frame])
 # R2 = np.array([[-1,0,0],[0,-1,0],[0,0,1]])
 # pcd = pcd.rotate(R)
 # pcd = pcd.rotate(R2)
-# mesh_coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-#     size=100, origin=[0,0,0])
+# mesh_coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=100, origin=[0,0,0])
 # o3d.visualization.draw_geometries([pcd,mesh_coordinate_frame])
 
