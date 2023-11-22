@@ -98,7 +98,7 @@ def generate_launch_description():
     robot_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["forward_position_controller", "--controller-manager", "/controller_manager"],
+        arguments=["robotiq_gripper_controller", "--controller-manager", "/controller_manager"],
     )
 
     nodes = [
@@ -107,7 +107,7 @@ def generate_launch_description():
         node_robot_state_publisher,
         spawn_entity,
         joint_state_broadcaster_spawner,
-        # robot_controller_spawner,
+        robot_controller_spawner,
     ]
 
     return LaunchDescription(declared_arguments + nodes)

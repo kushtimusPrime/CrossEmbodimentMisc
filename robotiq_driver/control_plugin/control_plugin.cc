@@ -28,7 +28,7 @@ namespace gazebo
         this->model_name_ = _model->GetName();
         const gazebo_ros::QoS &qos = this->node_->get_qos();
       // Just output a message for now
-      std::cerr << "KUSHTIMUS PRIME" << "]\n";
+      std::cout << "KUSHTIMUS PRIME" << "]\n";
       _model->GetWorld()->SetPhysicsEnabled(false);
       this->gripper_subscriber_ = this->node_->create_subscription<std_msgs::msg::Float64>(
                 "gripper_command",

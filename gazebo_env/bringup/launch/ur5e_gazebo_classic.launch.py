@@ -53,7 +53,7 @@ def generate_launch_description():
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             PathJoinSubstitution(
-               [FindPackageShare("gazebo_env"), "urdf", "ur5e_gazebo.urdf.xacro"]
+               [FindPackageShare("gazebo_env"), "urdf", "ur5e_nvidia_with_gripper_camera_scene.urdf.xacro"]
             ),
             " ",
             "use_gazebo_classic:=true",
@@ -86,6 +86,18 @@ def generate_launch_description():
         arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
     )
 
+    joint_state_publisher_node = Node(
+        package="gazebo_env",
+        executable="full_ur5e_joint_state_publisher_node.py",
+        output="screen"
+    )
+
+    image_sub_node = Node(
+        package="gazebo_env",
+        executable="gazebo_image_test.py",
+        output="screen"
+    )
+
     robot_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
@@ -97,8 +109,10 @@ def generate_launch_description():
         gazebo_client,
         node_robot_state_publisher,
         spawn_entity,
-        joint_state_broadcaster_spawner,
-        robot_controller_spawner,
+        joint_state_publisher_node,
+        #image_sub_node
+        #joint_state_broadcaster_spawner,
+        #robot_controller_spawner,
     ]
 
     return LaunchDescription(declared_arguments + nodes)

@@ -42,6 +42,33 @@ ament_target_dependencies(no_physics_plugin
 )
 target_link_libraries(no_physics_plugin ${GAZEBO_LIBRARIES})
 
+add_library(ur5e_control_plugin SHARED ur5e_control_plugin/ur5e_control_plugin.cc)
+ament_target_dependencies(ur5e_control_plugin
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "std_msgs"
+)
+target_link_libraries(ur5e_control_plugin ${GAZEBO_LIBRARIES})
+
+add_library(panda_control_plugin SHARED panda_control_plugin/panda_control_plugin.cc)
+ament_target_dependencies(panda_control_plugin
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "std_msgs"
+)
+target_link_libraries(panda_control_plugin ${GAZEBO_LIBRARIES})
+
+add_library(gripper_control_plugin SHARED gripper_control_plugin/gripper_control_plugin.cc)
+ament_target_dependencies(gripper_control_plugin
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "std_msgs"
+)
+target_link_libraries(gripper_control_plugin ${GAZEBO_LIBRARIES})
+
 
 # Include Cpp "include" directory
 include_directories(include
@@ -83,6 +110,10 @@ install(
   DESTINATION share/gazebo_env
 )
 install(
+  DIRECTORY ur5e_description
+  DESTINATION share/gazebo_env
+)
+install(
   DIRECTORY bringup/launch bringup/config
   DESTINATION share/gazebo_env
 )
@@ -94,6 +125,45 @@ install(TARGETS gazebo_env
 )
 install(PROGRAMS
   scripts/ee_pose.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/panda_point_cloud_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/read_data_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/write_data_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/ur5e_point_cloud_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/full_ur5e_joint_state_publisher_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/full_panda_joint_state_publisher_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/gripper_joint_state_publisher_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+install(PROGRAMS
+  scripts/gazebo_image_test.py
   DESTINATION lib/${PROJECT_NAME}
 )
 # uncomment the following section in order to fill in
