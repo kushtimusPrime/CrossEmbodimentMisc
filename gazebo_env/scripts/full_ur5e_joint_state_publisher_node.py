@@ -16,7 +16,7 @@ class FullUR5EJointStatePublisher(Node):
         self.publisher = self.create_publisher(
             JointState,
             '/joint_states',  # Topic name for /joint_states
-            10)
+            1)
         self.joint_state_msg = JointState()
 
     def joint_commands_callback(self, msg):

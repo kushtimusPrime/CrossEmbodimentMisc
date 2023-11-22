@@ -110,7 +110,7 @@ def generate_launch_description():
         node_robot_state_publisher,
         spawn_entity,
         joint_state_publisher_node,
-        image_sub_node
+        #image_sub_node
         #joint_state_broadcaster_spawner,
         #robot_controller_spawner,
     ]

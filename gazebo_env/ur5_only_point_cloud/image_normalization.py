@@ -125,3 +125,32 @@ target_lab[:,:,0] = matched_luminance
 matched_image = cv2.cvtColor(target_lab, cv2.COLOR_LAB2BGR)
 
 cv2.imwrite('output.jpg', cv2.absdiff(isaac_masked_image,gazebo_masked_image))
+
+# Load the original image and the segmentation gazebo_mask
+second_gazebo_original_image = cv2.imread('second_image.jpg')
+second_gazebo_mask = cv2.imread('second_image_mask.jpg', cv2.IMREAD_GRAYSCALE)
+_, second_gazebo_mask = cv2.threshold(second_gazebo_mask, 128, 255, cv2.THRESH_BINARY)
+# import pdb
+# pdb.set_trace()
+# gazebo_mask = np.expand_dims(gazebo_mask, axis=-1)
+# result = gazebo_original_image * gazebo_mask
+# result = result.squeeze()
+# import pdb
+# pdb.set_trace()
+# # Ensure both the image and the gazebo_mask have the same dimensions
+second_gazebo_mask = cv2.resize(second_gazebo_mask, (second_gazebo_original_image.shape[1], second_gazebo_original_image.shape[0]))
+
+# Create a new image with the same size as the original image
+second_gazebo_masked_image = np.zeros_like(second_gazebo_original_image)
+
+# Apply the gazebo_mask to the original image using element-wise multiplication
+second_gazebo_masked_image = cv2.bitwise_and(second_gazebo_original_image, second_gazebo_original_image, mask=second_gazebo_mask)
+cv2.imwrite('second_try.jpg',second_gazebo_masked_image)
+target2_image = second_gazebo_masked_image
+target2_lab = cv2.cvtColor(target2_image, cv2.COLOR_BGR2LAB)
+target2_luminance = target2_lab[:,:,0]
+matched2_luminance = clahe.apply(source_luminance)
+target2_lab[:,:,0] = matched2_luminance 
+matched2_image = cv2.cvtColor(target2_lab, cv2.COLOR_LAB2BGR)
+
+cv2.imwrite('second_try_luminance.jpg', matched2_image)

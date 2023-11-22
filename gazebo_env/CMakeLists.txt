@@ -51,6 +51,15 @@ ament_target_dependencies(ur5e_control_plugin
 )
 target_link_libraries(ur5e_control_plugin ${GAZEBO_LIBRARIES})
 
+add_library(panda_control_plugin SHARED panda_control_plugin/panda_control_plugin.cc)
+ament_target_dependencies(panda_control_plugin
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "std_msgs"
+)
+target_link_libraries(panda_control_plugin ${GAZEBO_LIBRARIES})
+
 add_library(gripper_control_plugin SHARED gripper_control_plugin/gripper_control_plugin.cc)
 ament_target_dependencies(gripper_control_plugin
   "gazebo_dev"
@@ -120,7 +129,22 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
-  scripts/point_cloud_publisher.py
+  scripts/panda_point_cloud_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/read_data_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/write_data_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/ur5e_point_cloud_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -128,6 +152,12 @@ install(PROGRAMS
   scripts/full_ur5e_joint_state_publisher_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
+
+install(PROGRAMS
+  scripts/full_panda_joint_state_publisher_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(PROGRAMS
   scripts/gripper_joint_state_publisher_node.py
   DESTINATION lib/${PROJECT_NAME}

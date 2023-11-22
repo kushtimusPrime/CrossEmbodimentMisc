@@ -2,8 +2,9 @@ import open3d as o3d
 import trimesh
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 # Load the .dae file
-filename = "/home/benchturtle/cross_embodiment_ws/install/robotiq_description/share/robotiq_description/meshes/visual/ur_to_robotiq_adapter.dae"
+filename = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/meshes/panda/visual/link6.dae"
 mesh_scene = trimesh.load(filename)
 mesh = trimesh.util.concatenate(tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
                                     for g in mesh_scene.geometry.values()))
@@ -13,12 +14,20 @@ triangles = o3d.utility.Vector3iVector(mesh.faces)
 open3d_mesh = o3d.geometry.TriangleMesh(vertices, triangles)
 print(open3d_mesh)
 R = np.array([[-1,0,0],[0,0,1],[0,1,0]])
-open3d_mesh.rotate(R,[0,0,0])
-pcd = open3d_mesh.sample_points_uniformly(number_of_points=20000)
-pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
+#open3d_mesh.rotate(R,[0,0,0])
+pcd = open3d_mesh.sample_points_uniformly(number_of_points=200000)
 pcd_data = np.asarray(pcd.points)
+mesh_coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.001, origin=[0,0,0])
+#open3d_mesh.translate(np.array([0,0,0.03679997502]))
+t_matrix = np.array([[np.cos(-math.pi/4), -np.sin(-math.pi/4), 0.0,0],
+                            [np.sin(-math.pi/4), np.cos(-math.pi/4), 0.0,0],
+                            [0.0, 0.0, 1.0,0.03679997502],
+                            [0,0,0,1]])
+open3d_mesh.transform(t_matrix)
+pcd2 = open3d_mesh.sample_points_uniformly(number_of_points=200000)
 # Create an Open3D visualization window
-o3d.visualization.draw_geometries([pcd])
+o3d.visualization.draw_geometries([pcd,mesh_coordinate_frame])
+print(np.min(pcd_data[:, 1]))
 exit()
 o3d_mesh = None
 pcds = []
@@ -64,6 +73,7 @@ o3d.visualization.draw_geometries([new_pcd,mesh_coordinate_frame])
 # R2 = np.array([[-1,0,0],[0,-1,0],[0,0,1]])
 # pcd = pcd.rotate(R)
 # pcd = pcd.rotate(R2)
-# mesh_coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=100, origin=[0,0,0])
+# mesh_coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+#     size=100, origin=[0,0,0])
 # o3d.visualization.draw_geometries([pcd,mesh_coordinate_frame])
 
