@@ -339,7 +339,6 @@ class WriteData(Node):
                     open3d_mesh = self.setupMesh(filename,link_name,rpy_str,xyz_str)
                 else:
                     open3d_mesh += self.setupMesh(filename,link_name,rpy_str,xyz_str)
-            print("Total time: " + str(time.time() - start_time))
             pcd = open3d_mesh.sample_points_uniformly(number_of_points=200000)
             pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
             pcd_data = np.asarray(pcd.points)
@@ -376,6 +375,7 @@ class WriteData(Node):
         
     def listenerCallback(self,msg):
         if self.is_ready_:
+            start_time = time.time()
             depth_file = msg.depth_file
             segmentation = msg.segmentation
             joints = msg.joints
@@ -385,7 +385,7 @@ class WriteData(Node):
 
             f.close()
             ee_pose = self.panda_solver_.fk(np.array(joint_array))
-            qout = self.ur5e_solver_.ik(ee_pose,qinit=self.q_init_)
+            qout = self.ur5e_solver_.ik(ee_pose,qinit=np.zeros(self.ur5e_solver_.number_of_joints))#self.q_init_)
             self.q_init_ = qout
             # Hardcoded gripper
             qout_list = qout.tolist()
@@ -395,6 +395,8 @@ class WriteData(Node):
             self.ur5e_joint_command_publisher_.publish(qout_msg)
             self.joint_commands_callback(qout_msg)
             self.setupMeshes(depth_file,segmentation)
+            end_time = time.time()
+            print("Total time: " + str(end_time - start_time) + " s")
 
     def joint_commands_callback(self, msg):
         # Fill the JointState message with data from the Float64MultiArray

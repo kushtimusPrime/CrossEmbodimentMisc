@@ -30,7 +30,7 @@ class ReadData(Node):
         super().__init__('read_data_node')
         self.is_ready_ = False
         self.franka_info_folder_ = '/home/benchturtle/cross_embodiment_ws/src/gazebo_env/franka_1/'
-        timer_period = 0.5
+        timer_period = 2
         self.timer_ = self.create_timer(timer_period, self.timerCallback)
         self.depth_file_ = "rgbd.npy"
         self.segmentation_ = "seg.jpg"
