@@ -23,7 +23,7 @@ from sensor_msgs_py import point_cloud2
 import cv2
 from cv_bridge import CvBridge
 import time
-from input_filenames_msg.msg import InputFiles
+from input_filenames_msg.msg import InputFiles, InputFilesData
 from sensor_msgs.msg import JointState
 from tracikpy import TracIKSolver
 from mdh.kinematic_chain import KinematicChain
@@ -54,6 +54,11 @@ class WriteData(Node):
             InputFiles,
             'input_files',
             self.listenerCallback,
+            1)
+        self.subscription_data_ = self.create_subscription(
+            InputFilesData,
+            'input_files_data',
+            self.listenerCallbackData,
             1)
         self.joint_state_msg = JointState()
         self.q_init_ = np.zeros(self.ur5e_solver_.number_of_joints)
@@ -177,8 +182,15 @@ class WriteData(Node):
             return pixel_data, depth_data
         
     def inpainting(self,rgbd_file,seg_file,gazebo_rgb,gazebo_depth):
-        rgbd = np.load(rgbd_file)
-        seg = cv2.imread(seg_file,0)
+        
+        # TODO(kush): Clean this up to use actual data, not file names
+        if type(rgbd_file) == str:
+            rgbd = np.load(rgbd_file)
+            seg = cv2.imread(seg_file,0)
+        else:
+            rgbd = rgbd_file
+            seg_file = seg_file
+
         _, seg = cv2.threshold(seg, 128, 255, cv2.THRESH_BINARY)
         color_image = rgbd[:,:,0:3]
         color_image = cv2.cvtColor(color_image,cv2.COLOR_BGR2RGB)
@@ -397,6 +409,34 @@ class WriteData(Node):
             self.setupMeshes(depth_file,segmentation)
             end_time = time.time()
             print("Total time: " + str(end_time - start_time) + " s")
+
+    def listenerCallbackData(self,msg):
+        if self.is_ready_:
+            start_time = time.time()
+            depth_data = msg.depth_data
+
+            segmentation_data = msg.segmentation_data
+            depth_data = np.array(depth_data).resize((segmentation_data.width, segmentation_data.height, 4))
+
+            segmentation_data = self.cv_bridge_.imgmsg_to_cv2(segmentation_data)
+
+            joints = msg.joints
+            joint_array = joints
+
+            ee_pose = self.panda_solver_.fk(np.array(joint_array))
+            qout = self.ur5e_solver_.ik(ee_pose,qinit=np.zeros(self.ur5e_solver_.number_of_joints))#self.q_init_)
+            self.q_init_ = qout
+            # Hardcoded gripper
+            qout_list = qout.tolist()
+            qout_list.append(0.0)
+            qout_msg = Float64MultiArray()
+            qout_msg.data = qout_list
+            self.ur5e_joint_command_publisher_.publish(qout_msg)
+            self.joint_commands_callback(qout_msg)
+            self.setupMeshes(depth_data,segmentation_data)
+            end_time = time.time()
+            print("Total time: " + str(end_time - start_time) + " s")
+
 
     def joint_commands_callback(self, msg):
         # Fill the JointState message with data from the Float64MultiArray

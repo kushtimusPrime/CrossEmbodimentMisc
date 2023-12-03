@@ -11,10 +11,17 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
+set(msg_files
   "msg/InputFiles.msg"
+  "msg/InputFilesData.msg"
+  DEPENDENCIES builtin_interfaces std_msgs sensor_msgs
+)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  ${msg_files}
 )
 
 if(BUILD_TESTING)
