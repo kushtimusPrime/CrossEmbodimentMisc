@@ -189,7 +189,8 @@ class WriteData(Node):
             seg = cv2.imread(seg_file,0)
         else:
             rgbd = rgbd_file
-            seg_file = seg_file
+            seg = seg_file
+            seg = seg.astype(np.uint8)
 
         _, seg = cv2.threshold(seg, 128, 255, cv2.THRESH_BINARY)
         color_image = rgbd[:,:,0:3]
@@ -416,7 +417,8 @@ class WriteData(Node):
             depth_data = msg.depth_data
 
             segmentation_data = msg.segmentation_data
-            depth_data = np.array(depth_data).resize((segmentation_data.width, segmentation_data.height, 4))
+            depth_data_reshaped = np.array(depth_data) \
+                            .reshape((segmentation_data.width, segmentation_data.height, 4))
 
             segmentation_data = self.cv_bridge_.imgmsg_to_cv2(segmentation_data)
 
@@ -433,7 +435,7 @@ class WriteData(Node):
             qout_msg.data = qout_list
             self.ur5e_joint_command_publisher_.publish(qout_msg)
             self.joint_commands_callback(qout_msg)
-            self.setupMeshes(depth_data,segmentation_data)
+            self.setupMeshes(depth_data_reshaped, segmentation_data)
             end_time = time.time()
             print("Total time: " + str(end_time - start_time) + " s")
 

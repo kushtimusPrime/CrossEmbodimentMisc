@@ -144,10 +144,29 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  scripts/read_data_node_robosuite.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/write_data_node_robosuite.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
   scripts/ur5e_point_cloud_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS
+  scripts/panda_joint_command_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/ur5e_joint_command_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 install(PROGRAMS
   scripts/full_ur5e_joint_state_publisher_node.py
   DESTINATION lib/${PROJECT_NAME}

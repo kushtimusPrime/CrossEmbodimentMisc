@@ -56,6 +56,12 @@ class PointCloudPublisher(Node):
             self.cameraInfoCallback,
             10
         )
+        self.camera_color_subscription_ = self.create_subscription(
+            Image,
+            '/camera/image_raw',
+            self.cameraCallback,
+            1
+        )
         self.cv_bridge_ = CvBridge()
         self.mask_image_publisher_ = self.create_publisher(Image,"mask_image",10)
         timer_period = 0.5
@@ -95,6 +101,10 @@ class PointCloudPublisher(Node):
         #self.sync_ = TimeSynchronizer(self.subscribers_,10)
         #self.sync_.registerCallback(self.pointcloud_callback)
 
+    def cameraCallback(self,msg):
+        cv2_image = self.cv_bridge_.imgmsg_to_cv2(msg)
+        cv2.imwrite('gazebo_image.png',cv2_image)
+        
     def fullPointcloudCallback(self,msg):
         all_pixels = self.getPixels(msg)
         mask_image = np.zeros(self.image_shape_, dtype=np.uint8)
@@ -120,6 +130,7 @@ class PointCloudPublisher(Node):
         pcd = open3d_mesh.sample_points_uniformly(number_of_points=200000)
         pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
         pcd_data = np.asarray(pcd.points)
+        np.save('panda_gazebo_pointcloud.npy',pcd_data)
         point_cloud_msg = PointCloud2()
         point_cloud_msg.header = Header()
         point_cloud_msg.header.frame_id = "camera_color_optical_frame"

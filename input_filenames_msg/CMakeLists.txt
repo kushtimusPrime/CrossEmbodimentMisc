@@ -17,6 +17,8 @@ find_package(rosidl_default_generators REQUIRED)
 set(msg_files
   "msg/InputFiles.msg"
   "msg/InputFilesData.msg"
+  "msg/InputFilesRobosuite.msg"
+  "msg/InputFilesRobosuiteData.msg"
   DEPENDENCIES builtin_interfaces std_msgs sensor_msgs
 )
 
