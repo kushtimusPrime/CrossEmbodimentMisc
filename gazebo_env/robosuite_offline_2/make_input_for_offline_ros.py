@@ -15,7 +15,7 @@ def normalize_depth_image(depth_image):
     # For example, to scale it to [0, 255] for visualization:
     normalized_depth_image = (normalized_depth_image * 255).astype(np.uint8)
     return normalized_depth_image
-
+os.makedirs('offline_ur5e/results')
 # Load the data
 data = np.load("one_trajectory_source_target.npy", allow_pickle=True)
 for i in range(data.shape[0]):
@@ -23,6 +23,7 @@ for i in range(data.shape[0]):
     folder_path = 'offline_ur5e/offline_ur5e_'+str(i)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
+        
     panda_folder_path = 'offline_ur5e/offline_ur5e_'+str(i)+'/panda'
     if not os.path.exists(panda_folder_path):
         os.makedirs(panda_folder_path)

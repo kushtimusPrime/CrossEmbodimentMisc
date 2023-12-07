@@ -44,14 +44,14 @@ class WriteData(Node):
         self.chain_ = kp.build_chain_from_urdf(open(self.panda_urdf_).read())
         self.ur5e_solver_ = TracIKSolver(self.ur5e_urdf_,"world","ur5e_ee_link")
 
-        # camera_color_optical_frame to world and then multiply translation by 1000
+        # real_camera_link to world and then multiply translation by 1000
         # self.camera_to_world_ = np.array([[0,1,0,0],
         #                                       [0.258,0,-0.966,989],
         #                                       [-0.966,0,-0.258,1919],
         #                                       [0,0,0,1]])
-        self.camera_to_world_ = np.array([[0.000,  1.000, 0.000 , 32],
-                                          [0.706, 0.000 ,-0.708,  615],
-                                          [-0.708,  0.000, -0.706 , 1297],
+        self.camera_to_world_ = np.array([[0.000,  1.000, 0.000 , -1],
+                                          [0.706, 0.000 ,-0.708,  603],
+                                          [-0.708,  0.000, -0.706 , 1307],
                                           [0,0,0,1]])
         
         self.robosuite_intrinsic_matrix_ = np.array([[101.39696962,   0.        , 42.        ],
@@ -159,6 +159,7 @@ class WriteData(Node):
     def cameraCallback(self,msg):
         if(self.is_ready_):
             self.original_image_ = self.cv_bridge_.imgmsg_to_cv2(msg,desired_encoding="passthrough")
+            cv2.imwrite('gazebo_rgb.png',self.original_image_)
 
     def prelimMeshFast(self,filename,link_name,rpy_str,xyz_str):
         # RPY is in ZYX I'm pretty sure
@@ -232,7 +233,7 @@ class WriteData(Node):
             msg_data = np.array([[item.tolist() for item in row] for row in msg_data])
             depth_data = msg_data[:,2]
             camera_transform = np.vstack((self.camera_intrinsic_matrix_,np.array([0,0,0,1]).reshape(1,4)))
-            pixel_data = self.project_points_from_world_to_camera(msg_data,camera_transform,480,640)
+            pixel_data = self.project_points_from_world_to_camera(msg_data,camera_transform,self.image_shape_[1],self.image_shape_[0])
             return pixel_data, depth_data
         
     def project_points_from_world_to_camera(self,points, world_to_camera_transform, camera_height, camera_width,pixel_to_point_dicts=False):
@@ -338,7 +339,7 @@ class WriteData(Node):
             depth_image[pixel[1],pixel[0]] = point[2]
         return depth_image
 
-    def inpainting(self,rgb,depth,seg_file,gazebo_rgb,gazebo_seg,pointcloud_msg):
+    def inpainting(self,rgb,depth,seg_file,gazebo_rgb,gazebo_seg,gazebo_depth):
         # TODO(kush): Clean this up to use actual data, not file names
         if type(rgb) == str:
             rgb_np = cv2.imread(rgb)
@@ -358,6 +359,32 @@ class WriteData(Node):
         robosuite_segmentation_mask_255 = seg
         gazebo_robot_only_rgb = gazebo_rgb
         gazebo_segmentation_mask_255 = gazebo_seg
+        gazebo_robot_only_depth = gazebo_depth
+        robosuite_rgbd_image_unmasked = np.concatenate((robosuite_rgb_image_unmasked,robosuite_depth_image_unmasked[:,:,np.newaxis]),axis=2)
+        inverted_robosuite_segmentation_mask_255 = cv2.bitwise_not(robosuite_segmentation_mask_255)
+        robosuite_rgbd_image_masked = cv2.bitwise_and(robosuite_rgbd_image_unmasked,robosuite_rgbd_image_unmasked,mask=inverted_robosuite_segmentation_mask_255)
+        robosuite_rgb_image_masked = robosuite_rgbd_image_masked[:,:,0:3].astype(np.uint8)
+        robosuite_depth_image_masked = robosuite_rgbd_image_masked[:,:,-1]
+        joined_depth = np.concatenate((gazebo_robot_only_depth[np.newaxis],robosuite_depth_image_masked[np.newaxis]),axis=0)
+        joined_depth[joined_depth == 0] = 1000
+        joined_depth_argmin = np.argmin(joined_depth,axis=0)
+        robosuite_rgb_image_masked_inpaint = cv2.inpaint(robosuite_rgb_image_masked,robosuite_segmentation_mask_255,inpaintRadius=3,flags=cv2.INPAINT_TELEA)
+        attempt = robosuite_rgb_image_masked_inpaint * joined_depth_argmin[:,:,np.newaxis]
+        inverted_joined_depth_argmin = 1 - joined_depth_argmin
+        attempt2 = gazebo_robot_only_rgb * inverted_joined_depth_argmin[:,:,np.newaxis]
+        inpainted_image = attempt + attempt2
+        image_8bit = cv2.convertScaleAbs(inpainted_image)  # Convert to 8-bit image
+        last_slash_index = seg_file.rfind('/')
+        underscore_before_last_slash_index = seg_file.rfind('_', 0, last_slash_index)
+        str_num = seg_file[underscore_before_last_slash_index + 1:last_slash_index]
+        inpaint_file = seg_file[:seg_file.rfind('/', 0, seg_file.rfind('/')) + 1] + 'results/inpaint' + str_num +'.png'
+
+        cv2.imwrite(inpaint_file,image_8bit)
+        inpainted_image_msg = self.cv_bridge_.cv2_to_imgmsg(image_8bit,encoding="bgr8")
+        self.inpainted_publisher_.publish(inpainted_image_msg)
+        return
+        import pdb
+        pdb.set_trace()
         transformed_gazebo_rgb,transformed_gazebo_depth = self.transformGazeboImage(gazebo_robot_only_rgb,gazebo_segmentation_mask_255,pointcloud_msg)
         robosuite_rgbd_image_unmasked = np.concatenate((robosuite_rgb_image_unmasked,robosuite_depth_image_unmasked[:,:,np.newaxis]),axis=2)
         inverted_robosuite_segmentation_mask_255 = cv2.bitwise_not(robosuite_segmentation_mask_255)
@@ -459,16 +486,26 @@ class WriteData(Node):
             if(self.camera_intrinsic_matrix_ is None):
                 return
             all_pixels,depth_data = self.getPixels(msg)
-            mask_image = np.zeros(self.image_shape_, dtype=np.uint8)
+            mask_image = np.zeros(self.image_shape_[:2], dtype=np.uint8)
             depth_image = np.zeros(self.image_shape_[:2], dtype=np.float64)
             white_color = (255,255,255)
             i = 0
             for coord in all_pixels:
                 x,y = coord
                 # TODO Change 5 pixel hardcoded offset. Sorry Professor Chen, I'll do better :)
-                mask_image[round(x), round(y)-10] = white_color
-                depth_image[round(x), round(y)-10] = depth_data[i]
+                mask_image[round(x), round(y)] = 255
+                depth_image[round(x), round(y)] = depth_data[i]
                 i += 1
+            cv2.imwrite('mask_image.png',mask_image)
+            cv2.imwrite('depth_image.png',self.normalize_depth_image(depth_image))
+            if(self.original_image_ is not None):
+                mask_image = cv2.resize(mask_image, (mask_image.shape[1], mask_image.shape[0]))
+                gazebo_masked_image = np.zeros_like(self.original_image_)
+                gazebo_masked_image = cv2.bitwise_and(self.original_image_, self.original_image_, mask=mask_image)
+                cv2.imwrite('original_image.png',self.original_image_)
+                cv2.imwrite('gazebo_masked_image.png',gazebo_masked_image)
+                self.inpainting(rgb,depth,segmentation,gazebo_masked_image,mask_image,depth_image)
+            return
             np.save('/home/benchturtle/gazebo_robot_depth.npy',depth_image)
             old_mask_image = mask_image
             mask_image = cv2.cvtColor(mask_image, cv2.COLOR_RGB2GRAY)
@@ -638,7 +675,7 @@ class WriteData(Node):
             np.save('panda_gazebo_pointcloud.npy',pcd_data)
             point_cloud_msg = PointCloud2()
             point_cloud_msg.header = Header()
-            point_cloud_msg.header.frame_id = "camera_color_optical_frame"
+            point_cloud_msg.header.frame_id = "real_camera_link"
             fields =[PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
             PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
             PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
@@ -676,8 +713,7 @@ class WriteData(Node):
             joint_array = np.load(joints)
             gripper = joint_array[-1]
             joint_array = joint_array[:-1]
-            import pdb
-            pdb.set_trace()
+            
             ee_pose = self.ur5e_solver_.fk(np.array(joint_array))
             scipy_rotation = R.from_matrix(ee_pose[:3,:3])
             scipy_quaternion = scipy_rotation.as_quat()
