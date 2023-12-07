@@ -1,3 +1,5 @@
 .vscode
 gazebo_env/robosuite_outputs/Panda_output*
 gazebo_env/robosuite_outputs/UR5e_output*
+gazebo_env/robotsuite_outputs/Panda_output*
+gazebo_env/robotsuite_outputs/UR5e_output*

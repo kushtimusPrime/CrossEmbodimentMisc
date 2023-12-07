@@ -15,8 +15,8 @@ class JointCommandsPublisher(Node):
         msg = Float64MultiArray()
         
         # Example joint commands
-        joint_commands = [-9.87859200e-06,  1.76808914e-03,  3.77148957e-04, -4.35887345e-05,
-  7.90536071e-06 ,-3.75368866e-06,0.0]  # Replace this with your joint commands
+        joint_commands = [-0.37793201, -1.51306807,  2.2465576 , -2.4317753 , -1.52886899,
+       -1.80969565,0.0]  # Replace this with your joint commands
         
         # Assigning the joint commands to the Float64MultiArray message
         msg.data = joint_commands

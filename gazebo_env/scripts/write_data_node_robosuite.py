@@ -30,15 +30,17 @@ from mdh.kinematic_chain import KinematicChain
 from mdh import UnReachable
 import kinpy as kp
 from geometry_msgs.msg import Vector3, Quaternion
+from scipy.spatial.transform import Rotation as R
 
 class WriteData(Node):
     def __init__(self):
         super().__init__('write_data_node')
         self.is_ready_ = False
         self.thetas_ = None
-        self.panda_urdf_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/description/urdf/panda_arm_hand_only_ik_robosuite.urdf"
+        self.debug_ = False
+        self.panda_urdf_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/description/urdf/panda_ik_robosuite.urdf"        
         self.panda_solver_ = TracIKSolver(self.panda_urdf_,"world","panda_ee")
-        self.ur5e_urdf_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/description/urdf/ur5e_nvidia_with_gripper_solo_ik_robosuite.urdf"
+        self.ur5e_urdf_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/description/urdf/ur5e_ik_robosuite.urdf"
         self.chain_ = kp.build_chain_from_urdf(open(self.panda_urdf_).read())
         self.ur5e_solver_ = TracIKSolver(self.ur5e_urdf_,"world","ur5e_ee_link")
 
@@ -52,8 +54,8 @@ class WriteData(Node):
                                           [-0.708,  0.000, -0.706 , 1297],
                                           [0,0,0,1]])
         
-        self.robosuite_intrinsic_matrix_ = np.array([[309.01933598,   0.        , 128.        ],
-       [  0.        , 309.01933598, 128.        ],
+        self.robosuite_intrinsic_matrix_ = np.array([[101.39696962,   0.        , 42.        ],
+       [  0.        , 101.39696962, 42.        ],
        [  0.        ,   0.        ,   1.        ]])
         self.panda_joint_command_publisher_ = self.create_publisher(Float64MultiArray,'/joint_commands',1)
         self.panda_joint_state_publisher_ = self.create_publisher(
@@ -72,7 +74,7 @@ class WriteData(Node):
             1)
         self.joint_state_msg = JointState()
         self.q_init_ = np.zeros(self.panda_solver_.number_of_joints)
-
+        
         self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","panda_arm_hand_only.urdf.xacro")
         xacro_command = "ros2 run xacro xacro " + self.urdf_xacro_path_
         xacro_subprocess = subprocess.Popen(
@@ -97,7 +99,8 @@ class WriteData(Node):
         self.tf_listener_ = TransformListener(self.tf_buffer_, self)
         self.camera_intrinsic_matrix_ = None
         self.image_shape_ = None
-        self.robosuite_image_shape_ = (256,256)
+        # REMEMBER TO HARDCODE THIS
+        self.robosuite_image_shape_ = (84,84)
         self.camera_intrinsic_subscription_ = self.create_subscription(
             CameraInfo,
             '/camera/camera_info',
@@ -370,7 +373,12 @@ class WriteData(Node):
         attempt2 = transformed_gazebo_rgb * inverted_joined_depth_argmin[:,:,np.newaxis]
         inpainted_image = attempt + attempt2
         image_8bit = cv2.convertScaleAbs(inpainted_image)  # Convert to 8-bit image
-        
+        last_slash_index = seg_file.rfind('/')
+        underscore_before_last_slash_index = seg_file.rfind('_', 0, last_slash_index)
+        str_num = seg_file[underscore_before_last_slash_index + 1:last_slash_index]
+        inpaint_file = seg_file[:seg_file.rfind('/', 0, seg_file.rfind('/')) + 1] + 'results/inpaint' + str_num +'.png'
+
+        cv2.imwrite(inpaint_file,image_8bit)
         inpainted_image_msg = self.cv_bridge_.cv2_to_imgmsg(image_8bit,encoding="bgr8")
         self.inpainted_publisher_.publish(inpainted_image_msg)
 
@@ -666,12 +674,20 @@ class WriteData(Node):
             segmentation = msg.segmentation
             joints = msg.joints
             joint_array = np.load(joints)
+            gripper = joint_array[-1]
+            joint_array = joint_array[:-1]
+            import pdb
+            pdb.set_trace()
             ee_pose = self.ur5e_solver_.fk(np.array(joint_array))
+            scipy_rotation = R.from_matrix(ee_pose[:3,:3])
+            scipy_quaternion = scipy_rotation.as_quat()
             qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_)
             self.q_init_ = qout
             # Hardcoded gripper
             qout_list = qout.tolist()
-            qout_list.append(0.0)
+            print(gripper)
+            panda_gripper_command = 0.04 * gripper / 0.8
+            qout_list.append(panda_gripper_command)
             qout_msg = Float64MultiArray()
             qout_msg.data = qout_list
             self.panda_joint_command_publisher_.publish(qout_msg)

@@ -518,7 +518,7 @@
     </joint>
     <link name="ur5e_ee_link" />
     <joint name="tool0_to_ur5e_ee_link_fixed_joint" type="fixed">
-      <origin rpy="0 0 0" xyz="0 0.001514 0.143" />
+      <origin rpy="0 0 0" xyz="0.000924756350 0.000929957310 0.142071136" />
       <parent link="tool0" />
       <child link="ur5e_ee_link" />
     </joint>

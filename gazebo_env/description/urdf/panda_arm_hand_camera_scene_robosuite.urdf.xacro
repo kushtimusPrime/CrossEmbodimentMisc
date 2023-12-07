@@ -8,7 +8,8 @@
   <xacro:include filename="$(find gazebo_env)/urdf/d435.urdf.xacro" />
   <xacro:sensor_d435 parent="world">
     <!-- <origin xyz="1.613 0.032 1.441" rpy="0 0.2606116 3.14159" /> -->
-    <origin xyz="0.5 0 1.35" rpy="0 0.7840421 3.14159" />
+    <!-- for some reason we have to modify the xyz because it is a little shifted-->
+    <origin xyz="0.516 0.032 1.349" rpy="0 0.785398 3.14159" />
         <!-- <origin xyz="-1 0 0" rpy="0 3.1415927 1.5707963" /> -->
   </xacro:sensor_d435>
   <gazebo>

@@ -88,7 +88,7 @@
     <joint name="${ns}_finger_joint3" type="fixed">
       <parent link="${ns}_hand"/>
       <child link="${ns}_ee"/>
-      <origin xyz="-0.004996500 -0.004996500 0.097724" rpy="0 0 0"/>
+      <origin xyz="-0.0000844170200 0.0000111528700 0.0964552948" rpy="0 0 0"/>
     </joint>
   </xacro:macro>
 </robot>
