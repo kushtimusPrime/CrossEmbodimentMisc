@@ -4,6 +4,7 @@ import cv2
 # Load the data
 data = np.load("one_trajectory_source_target.npy", allow_pickle=True)
 folder_path = '/home/benchturtle/cross_embodiment_ws/src/gazebo_env/robosuite_offline_2/offline_ur5e/results/inpaint'
+
 for i in range(len(data)):
     image_path = folder_path + str(i) +'.png'
     inpainted_result = cv2.imread(image_path)    # show ["agentview"]["rgb"] and ["ground_truth_source_robot_rgb"] side by side

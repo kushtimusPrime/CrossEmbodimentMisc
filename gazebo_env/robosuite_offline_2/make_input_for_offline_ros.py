@@ -15,7 +15,8 @@ def normalize_depth_image(depth_image):
     # For example, to scale it to [0, 255] for visualization:
     normalized_depth_image = (normalized_depth_image * 255).astype(np.uint8)
     return normalized_depth_image
-os.makedirs('offline_ur5e/results')
+if not os.path.exists('offline_ur5e/results'):
+    os.makedirs('offline_ur5e/results')
 # Load the data
 data = np.load("one_trajectory_source_target.npy", allow_pickle=True)
 for i in range(data.shape[0]):
@@ -56,9 +57,11 @@ for i in range(data.shape[0]):
     print("Extrinsic Translation: " + str(translation))
 
     joints = data0['joint_angles']
-    gripper_command = max(abs(data0['robot0_gripper_qpos']))
+    gripper_command = data0['robot0_gripper_qpos'][5]
+    grippers = data0['robot0_gripper_qpos']
     joints = np.append(joints,gripper_command)
     np.save(folder_path + '/joints.npy',joints)
+    np.save(folder_path + '/gripper.npy',grippers)
 
     depth = data0['agentview']['real_depth_map']
     normalized_depth_image = normalize_depth_image(depth)

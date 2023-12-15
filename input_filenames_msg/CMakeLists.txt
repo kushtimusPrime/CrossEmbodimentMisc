@@ -19,6 +19,7 @@ set(msg_files
   "msg/InputFilesData.msg"
   "msg/InputFilesRobosuite.msg"
   "msg/InputFilesRobosuiteData.msg"
+  "msg/InputFilesFrankaToFranka.msg"
   DEPENDENCIES builtin_interfaces std_msgs sensor_msgs
 )
 

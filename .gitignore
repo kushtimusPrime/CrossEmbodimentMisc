@@ -3,3 +3,6 @@ gazebo_env/robosuite_outputs/Panda_output*
 gazebo_env/robosuite_outputs/UR5e_output*
 gazebo_env/robotsuite_outputs/Panda_output*
 gazebo_env/robotsuite_outputs/UR5e_output*
+gazebo_env/robosuite_offline_2/*
+gazebo_env/franka_to_franka/*
+gazebo_env/robosuite_offline_3/*

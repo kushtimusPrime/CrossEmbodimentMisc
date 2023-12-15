@@ -40,8 +40,8 @@ class ReadData(Node):
         self.is_ready_ = True
     
     def timerCallback(self):
-        if self.is_ready_ and self.i_ < 50:
-            franka_folder = self.franka_info_folder_+str(self.i_) +'/'
+        if self.is_ready_ and self.i_ < 100:
+            franka_folder = self.franka_info_folder_+str(int(self.i_ / 2)) +'/'
             rgb = franka_folder + self.rgb_
             depth = franka_folder + self.depth_
             segmentation = franka_folder + self.segmentation_
