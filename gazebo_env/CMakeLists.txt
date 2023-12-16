@@ -14,6 +14,8 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 )
 
 # Find dependencies
+set (CMAKE_PREFIX_PATH "/home/benchturtle/opencv_build")
+find_package ( OpenCV REQUIRED)
 find_package(ament_cmake REQUIRED)
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
@@ -22,6 +24,9 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(message_filters REQUIRED)
+find_package(cv_bridge REQUIRED)
 
 # Find Gazebo
 find_package(gazebo REQUIRED)
@@ -57,8 +62,11 @@ ament_target_dependencies(panda_control_plugin
   "gazebo_ros"
   "rclcpp"
   "std_msgs"
+  "sensor_msgs"
+  "message_filters"
+  "cv_bridge"
 )
-target_link_libraries(panda_control_plugin ${GAZEBO_LIBRARIES})
+target_link_libraries(panda_control_plugin ${GAZEBO_LIBRARIES} ${OpenCV_LIBS})
 
 add_library(gripper_control_plugin SHARED gripper_control_plugin/gripper_control_plugin.cc)
 ament_target_dependencies(gripper_control_plugin
@@ -149,12 +157,22 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  scripts/read_data_node_robosuite_better.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
   scripts/read_data_node_robosuite_franka_to_franka.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(PROGRAMS
   scripts/write_data_node_robosuite.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/write_data_node_robosuite_better.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

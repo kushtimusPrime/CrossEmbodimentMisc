@@ -99,7 +99,7 @@
     <link name="camera_color_optical_frame" />
     <gazebo reference="camera_link">
       <material>Gazebo/TurquoiseGlowOutline </material>
-      <sensor name="camera" type="camera">
+      <sensor name="depth_camera" type="depth">
         <pose> 0 0 0 0 0 0 </pose>
         <visualize>false</visualize>
         <update_rate>30</update_rate>

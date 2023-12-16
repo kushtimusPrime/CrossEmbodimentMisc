@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 import trimesh
 import open3d as o3d
-from std_msgs.msg import Header, Float64MultiArray
+from std_msgs.msg import Header, Float64MultiArray,Bool
 from sensor_msgs.msg import PointCloud2, PointField, CameraInfo, Image
 import numpy as np
 from launch_ros.substitutions import FindPackageShare
@@ -31,6 +31,7 @@ from mdh import UnReachable
 import kinpy as kp
 from geometry_msgs.msg import Vector3, Quaternion
 from scipy.spatial.transform import Rotation as R
+from message_filters import ApproximateTimeSynchronizer, Subscriber
 
 class WriteData(Node):
     def __init__(self):
@@ -62,9 +63,14 @@ class WriteData(Node):
             JointState,
             '/joint_states',  # Topic name for /joint_states
             1)
+        self.joint_state_subscriber_ = Subscriber(self,JointState,'/gazebo_joint_states')
+        self.gazebo_rgb_image_subscriber_ = Subscriber(self,Image,'/depth_camera/image_raw')
+        self.gazebo_depth_image_subscriber_ = Subscriber(self,Image,'/depth_camera/depth/image_raw')
+        self.gazebo_time_synchronizer_ = ApproximateTimeSynchronizer([self.joint_state_subscriber_,self.gazebo_rgb_image_subscriber_,self.gazebo_depth_image_subscriber_],1,1)
+        self.gazebo_time_synchronizer_.registerCallback(self.gazeboCallback)
         self.subscription_ = self.create_subscription(
             InputFilesRobosuite,
-            'input_files',
+            '/input_files',
             self.listenerCallback,
             1)
         self.subscription_data_ = self.create_subscription(
@@ -97,6 +103,10 @@ class WriteData(Node):
         self.publishers_ = []
         self.subscribers_ = []
         self.timers_ = []
+        self.robosuite_rgb_ = None
+        self.robosuite_depth_ = None
+        self.robosuite_seg_ = None
+        self.robosuite_qout_list_ = None
         self.i_ = -1
         self.offline_ = False
         self.seg_file_ = None
@@ -120,6 +130,7 @@ class WriteData(Node):
         )
         self.cv_bridge_ = CvBridge()
         self.mask_image_publisher_ = self.create_publisher(Image,"mask_image",1)
+        self.ready_for_next_input_publisher_ = self.create_publisher(Bool,"/ready_for_next_input",1)
         timer_period = 0.5
         self.links_info_ = []
         self.original_meshes_ = []
@@ -154,8 +165,30 @@ class WriteData(Node):
         self.inpainted_publisher_ = self.create_publisher(Image,"inpainted_image",1)
         #self.full_subscriber_ = self.create_subscription(PointCloud2,'full_pointcloud',self.fullPointcloudCallback,10)
         self.full_mask_image_publisher_ = self.create_publisher(Image,"full_mask_image",1)
+        self.updated_joints_ = False
         self.is_ready_ = True
     
+    def gazeboCallback(self,joints,gazebo_rgb,gazebo_depth):
+        joint_command_np = np.array(self.robosuite_qout_list_)
+        gazebo_joints_np = np.array(joints.position)
+        start_time = time.time()
+        gazebo_rgb_np = self.cv_bridge_.imgmsg_to_cv2(gazebo_rgb)
+        gazebo_depth_np = self.cv_bridge_.imgmsg_to_cv2(gazebo_depth)
+        gazebo_seg_np = (gazebo_depth_np < 8).astype(np.uint8)
+        gazebo_seg_255_np = 255 * gazebo_seg_np
+        robosuite_rgb = self.robosuite_rgb_
+        robosuite_depth = self.robosuite_depth_ 
+        robosuite_seg = self.robosuite_seg_
+        self.inpainting(robosuite_rgb,robosuite_depth,robosuite_seg,gazebo_rgb_np,gazebo_seg_255_np,gazebo_depth_np)
+        self.updated_joints_ = False
+        end_time = time.time()
+        print("Algo time: " + str(end_time - start_time) + " seconds")
+        return
+        #if(np.linalg.norm(joint_command_np - gazebo_joints_np,2) < 0.01):
+            
+        #elif(np.linalg.norm(joint_command_np - gazebo_joints_np,2) < 0.01 and not self.updated_joints_):
+        #    self.updated_joints_ = True
+
     def cameraInfoCallback(self,msg):
         if(self.is_ready_):
             self.camera_intrinsic_matrix_ = np.array([[msg.k[0],msg.k[1],msg.k[2],0],[msg.k[3],msg.k[4],msg.k[5],0],[msg.k[6],msg.k[7],msg.k[8],0]])
@@ -324,10 +357,8 @@ class WriteData(Node):
             pointcloud_np = np.asarray(pcd.points)
 
             # loaded = np.load('/home/benchturtle/cross_embodiment_ws/src/gazebo_env/robotsuite_outputs/UR5e_output3.npy', allow_pickle=True)
-            # print('Point cloud diff: ', np.linalg.norm(pointcloud_np - np.array(loaded.item()['agentview']['points'])[:, :3]))
 
         depth_data = pointcloud_np[:,2]
-        print('Depth data min: ', depth_data.min())
 
         fx = self.robosuite_intrinsic_matrix_[0,0]
         fy = self.robosuite_intrinsic_matrix_[1,1]
@@ -350,6 +381,7 @@ class WriteData(Node):
             rgb_np = cv2.imread(rgb)
             seg = cv2.imread(seg_file,0)
             depth_np = np.load(depth)
+            return
         else:
             print("I SHOULDNT BE THERE - NO I SHOULD BE HERE!!!!!!!!!!!!!!")
             rgb_np = np.array(rgb,dtype=np.uint8).reshape((seg_file.width,seg_file.height,3))
@@ -384,10 +416,6 @@ class WriteData(Node):
         attempt2 = gazebo_robot_only_rgb * inverted_joined_depth_argmin[:,:,np.newaxis]
         inpainted_image = attempt + attempt2
         image_8bit = cv2.convertScaleAbs(inpainted_image)  # Convert to 8-bit image
-        
-        cv2.imshow('test', image_8bit)
-        cv2.waitKey(1)
-
         if self.offline_:
             if not os.path.exists(self.seg_file_[:self.seg_file_.rfind('/', 0, self.seg_file_.rfind('/')) + 1] + 'results'):
                 os.makedirs(self.seg_file_[:self.seg_file_.rfind('/', 0, self.seg_file_.rfind('/')) + 1] + 'results')
@@ -404,6 +432,9 @@ class WriteData(Node):
 
         inpainted_image_msg = self.cv_bridge_.cv2_to_imgmsg(image_8bit,encoding="bgr8")
         self.inpainted_publisher_.publish(inpainted_image_msg)
+        ready_for_next_message = Bool()
+        ready_for_next_message.data = True
+        self.ready_for_next_input_publisher_.publish(ready_for_next_message)
         return
         import pdb
         pdb.set_trace()
@@ -692,7 +723,6 @@ class WriteData(Node):
 
     def setupMeshes(self,rgb,depth,segmentation):
         if(self.is_ready_):
-            print("HERE")
             open3d_mesh = None        
             for [filename,link_name,rpy_str,xyz_str] in self.links_info_:
                 if open3d_mesh is None:
@@ -734,8 +764,6 @@ class WriteData(Node):
             return R
         
     def listenerCallback(self,msg):
-        import pdb
-        pdb.set_trace()
         if self.is_ready_:
             self.offline_ = True
             start_time = time.time()
@@ -831,17 +859,20 @@ class WriteData(Node):
             self.q_init_ = qout
             # Hardcoded gripper
             qout_list = qout.tolist()
-            print(gripper)
+            
             panda_gripper_command = -0.05702400673569841 * gripper +  0.02670973458948458
             qout_list.append(panda_gripper_command)
             qout_msg = Float64MultiArray()
             qout_msg.data = qout_list
             self.panda_joint_command_publisher_.publish(qout_msg)
             self.joint_commands_callback(qout_msg)
+            self.robosuite_rgb_ = msg.rgb
+            self.robosuite_depth_ = msg.depth_map
+            self.robosuite_seg_ = msg.segmentation
+            self.robosuite_qout_list_ = qout_list
         else:
             print("WARNING HIT IK ON FRANKA ERROR")
         
-        self.setupMeshes(rgb,depth,segmentation)
 
     def listenerCallbackData(self,msg):
         if self.is_ready_:
