@@ -162,6 +162,11 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  scripts/read_data_node_robosuite_diffusion_better.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
   scripts/read_data_node_robosuite_franka_to_franka.py
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -178,6 +183,11 @@ install(PROGRAMS
 
 install(PROGRAMS
   scripts/write_data_node_robosuite_better.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/write_data_node_robosuite_diffusion_better.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

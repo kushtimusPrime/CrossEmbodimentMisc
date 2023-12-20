@@ -23,7 +23,7 @@ from sensor_msgs_py import point_cloud2
 import cv2
 from cv_bridge import CvBridge
 import time
-from input_filenames_msg.msg import InputFilesRobosuite, InputFilesRobosuiteData
+from input_filenames_msg.msg import InputFilesRobosuite, InputFilesRobosuiteData, InputFilesFrankaToFranka, InputFilesDiffusionData
 from sensor_msgs.msg import JointState
 from tracikpy import TracIKSolver
 from mdh.kinematic_chain import KinematicChain
@@ -55,26 +55,28 @@ class WriteData(Node):
                                           [-0.708,  0.000, -0.706 , 1307],
                                           [0,0,0,1]])
         
-        self.robosuite_intrinsic_matrix_ = np.array([[101.39696962,   0.        , 42.        ],
-       [  0.        , 101.39696962, 42.        ],
+        self.robosuite_intrinsic_matrix_ = np.array([[309.01933598,   0.        , 128.        ],
+       [  0.        , 309.01933598, 128.        ],
        [  0.        ,   0.        ,   1.        ]])
         self.panda_joint_command_publisher_ = self.create_publisher(Float64MultiArray,'/joint_commands',1)
         self.panda_joint_state_publisher_ = self.create_publisher(
             JointState,
             '/joint_states',  # Topic name for /joint_states
             1)
-        self.joint_state_subscriber_ = Subscriber(self,JointState,'/gazebo_joint_states')
+        self.hdf5_msg_ = None
+        self.joint_state_subscriber_ = self.create_subscription(JointState,'/gazebo_joint_states',self.gazeboCallback,1)
+        self.pdb_debug_ = False
         self.gazebo_rgb_image_subscriber_ = Subscriber(self,Image,'/depth_camera/image_raw')
         self.gazebo_depth_image_subscriber_ = Subscriber(self,Image,'/depth_camera/depth/image_raw')
-        self.gazebo_time_synchronizer_ = ApproximateTimeSynchronizer([self.joint_state_subscriber_,self.gazebo_rgb_image_subscriber_,self.gazebo_depth_image_subscriber_],1,1)
-        self.gazebo_time_synchronizer_.registerCallback(self.gazeboCallback)
+        self.gazebo_image_time_synchronizer_ = TimeSynchronizer([self.gazebo_rgb_image_subscriber_,self.gazebo_depth_image_subscriber_],1)
+        self.gazebo_image_time_synchronizer_.registerCallback(self.gazeboImageCallback)
         self.subscription_ = self.create_subscription(
-            InputFilesRobosuite,
-            '/input_files',
+            InputFilesFrankaToFranka,
+            '/input_data',
             self.listenerCallback,
             1)
         self.subscription_data_ = self.create_subscription(
-            InputFilesRobosuiteData,
+            InputFilesDiffusionData,
             'input_files_data',
             self.listenerCallbackOnlineDebug,
             1)
@@ -166,9 +168,23 @@ class WriteData(Node):
         #self.full_subscriber_ = self.create_subscription(PointCloud2,'full_pointcloud',self.fullPointcloudCallback,10)
         self.full_mask_image_publisher_ = self.create_publisher(Image,"full_mask_image",1)
         self.updated_joints_ = False
+        self.gazebo_rgb_ = None
+        self.gazebo_depth_ = None
         self.is_ready_ = True
+
+    def gazeboImageCallback(self,gazebo_rgb,gazebo_depth):
+        self.gazebo_rgb_ = gazebo_rgb
+        self.gazebo_depth_ = gazebo_depth
     
-    def gazeboCallback(self,joints,gazebo_rgb,gazebo_depth):
+    def gazeboCallback(self,joints):
+        print("Publishing Demo " + str(self.hdf5_msg_.demo_num.data) + " " + str(self.hdf5_msg_.traj_num.data))
+        gazebo_rgb = None
+        gazebo_depth = None
+        while(gazebo_rgb is None):
+            gazebo_rgb = self.gazebo_rgb_
+            gazebo_depth = self.gazebo_depth_
+            print("Gazebo images offline")
+
         joint_command_np = np.array(self.robosuite_qout_list_)
         gazebo_joints_np = np.array(joints.position)
         start_time = time.time()
@@ -376,6 +392,28 @@ class WriteData(Node):
             depth_image[pixel[1],pixel[0]] = point[2]
         return depth_image
 
+    def simpleInpainting(self,hdf5_msg,gazebo_rgb,gazebo_seg,gazebo_depth):
+        mask_image = gazebo_seg
+        mask_image = cv2.resize(mask_image, (mask_image.shape[1], mask_image.shape[0]))
+        gazebo_masked_image = np.zeros_like(gazebo_rgb)
+        gazebo_masked_image = cv2.bitwise_and(gazebo_rgb,gazebo_rgb, mask=mask_image)
+        cv2.imwrite('gazebo_masked_image.png',gazebo_masked_image)
+        hdf5_rgb = self.cv_bridge_.imgmsg_to_cv2(hdf5_msg.rgb)
+        inverted_mask_image = cv2.bitwise_not(mask_image)
+        hdf5_background = cv2.bitwise_and(hdf5_rgb,hdf5_rgb,mask=inverted_mask_image)
+        inpainted_image = gazebo_masked_image + hdf5_background
+        image_8bit = cv2.convertScaleAbs(inpainted_image)
+        inpainted_image_msg = self.cv_bridge_.cv2_to_imgmsg(image_8bit,encoding="bgr8")
+        self.inpainted_publisher_.publish(inpainted_image_msg)
+        online_input_folder = 'franka_to_franka'
+        demo_input_folder = online_input_folder + '/demo_' + str(hdf5_msg.demo_num.data)
+        inpaint_file_path = demo_input_folder + '/inpaint' + str(hdf5_msg.traj_num.data) + '.png'
+        cv2.imwrite(inpaint_file_path,image_8bit)  
+        ready_for_next_message = Bool()
+        ready_for_next_message.data = True
+        self.ready_for_next_input_publisher_.publish(ready_for_next_message)
+        return
+    
     def inpainting(self,rgb,depth,seg_file,gazebo_rgb,gazebo_seg,gazebo_depth):
         # TODO(kush): Clean this up to use actual data, not file names
         if type(rgb) == str:
@@ -384,14 +422,17 @@ class WriteData(Node):
             depth_np = np.load(depth)
             return
         else:
+            print("I SHOULDNT BE THERE - NO I SHOULD BE HERE!!!!!!!!!!!!!!")
             rgb_np = np.array(rgb,dtype=np.uint8).reshape((seg_file.width,seg_file.height,3))
             depth_np = np.array(depth,dtype=np.float64).reshape((seg_file.width,seg_file.height))
             seg_color = self.cv_bridge_.imgmsg_to_cv2(seg_file)
             seg = cv2.cvtColor(seg_color,cv2.COLOR_BGR2GRAY)
 
         _, seg = cv2.threshold(seg, 128, 255, cv2.THRESH_BINARY)
+        
         robosuite_depth_image_unmasked = depth_np
         robosuite_rgb_image_unmasked = rgb_np
+        cv2.imwrite('/home/benchturtle/original_rgb.png',robosuite_rgb_image_unmasked)
         robosuite_segmentation_mask_255 = seg
         gazebo_robot_only_rgb = gazebo_rgb
         gazebo_segmentation_mask_255 = gazebo_seg
@@ -431,9 +472,11 @@ class WriteData(Node):
             cv2.imwrite(attempt_file,attempt)
 
         inpainted_image_msg = self.cv_bridge_.cv2_to_imgmsg(image_8bit,encoding="bgr8")
-        mask_image_msg = self.cv_bridge_.cv2_to_imgmsg(gazebo_segmentation_mask_255,encoding="mono8")
         self.inpainted_publisher_.publish(inpainted_image_msg)
-        self.mask_image_publisher_.publish(mask_image_msg)
+        online_input_folder = 'franka_to_franka'
+        demo_input_folder = online_input_folder + '/demo_' + str(self.hdf5_msg_.demo_num.data)
+        inpaint_file_path = demo_input_folder + '/inpaint' + str(self.hdf5_msg_.traj_num.data) + '.png'
+        cv2.imwrite(inpaint_file_path,image_8bit) 
         ready_for_next_message = Bool()
         ready_for_next_message.data = True
         self.ready_for_next_input_publisher_.publish(ready_for_next_message)
@@ -594,6 +637,7 @@ class WriteData(Node):
                 ros_mask_image = self.cv_bridge_.cv2_to_imgmsg(old_mask_image,encoding="bgr8")
                 self.full_mask_image_publisher_.publish(ros_mask_image)
                 self.inpainting(rgb,depth,segmentation,gazebo_masked_image,mask_image,msg)
+                print("I am the Senate")
 
     def setupMesh(self,filename,link_name,rpy_str,xyz_str):
         if(self.is_ready_):
@@ -766,120 +810,155 @@ class WriteData(Node):
         
     def listenerCallback(self,msg):
         if self.is_ready_:
-            self.offline_ = True
-            start_time = time.time()
-            # path_array = msg.rgb.split('/')
-            # online_input_folder = '/'.join(path_array[:-3]) + '/offline_ur5e_input'
-            # if not os.path.exists(online_input_folder):
-            #     os.makedirs(online_input_folder)
-            # online_input_num_folder = online_input_folder + '/' + path_array[-2]
-            # if not os.path.exists(online_input_num_folder):
-            #     os.makedirs(online_input_num_folder)
-            # input_rgb_path = online_input_folder + '/' +'/'.join(path_array[-2:])
-            rgb_image = cv2.imread(msg.rgb)
-            # cv2.imwrite(input_rgb_path,rgb_image)
-            rgb_array = rgb_image.flatten().tolist()
-            depth_image = np.load(msg.depth)
-            # path_array = msg.depth.split('/')
-            # input_depth_path = online_input_folder + '/' +'/'.join(path_array[-2:])
-            # np.save(input_depth_path,depth_image)
-            depth_array = depth_image.flatten().tolist()
-            self.seg_file_ = msg.segmentation
-            segmentation_image = cv2.imread(msg.segmentation)
-            # path_array = msg.segmentation.split('/')
-            # input_segmentation_path = online_input_folder + '/' +'/'.join(path_array[-2:])
-            # cv2.imwrite(input_segmentation_path,segmentation_image)
-            segmentation_ros_image = self.cv_bridge_.cv2_to_imgmsg(segmentation_image)
-            joint_array = np.load(msg.joints).tolist()
-            # path_array = msg.joints.split('/')
-            # input_joints_path = online_input_folder + '/' +'/'.join(path_array[-2:])
-            # np.save(input_joints_path,np.array(joint_array))
-            input_file_robosuite_data_msg = InputFilesRobosuiteData()
-            input_file_robosuite_data_msg.rgb = rgb_array
-            input_file_robosuite_data_msg.depth_map = depth_array
-            input_file_robosuite_data_msg.segmentation = segmentation_ros_image
-            input_file_robosuite_data_msg.joints = joint_array
-            self.listenerCallbackOnlineDebug(input_file_robosuite_data_msg)
+            self.listenerCallbackOnlineDebug(msg)
             return
-            rgb = msg.rgb
-            depth = msg.depth
-            segmentation = msg.segmentation
-            joints = msg.joints
-            joint_array = np.load(joints)
-            gripper = joint_array[-1]
-            joint_array = joint_array[:-1]
-            
-            ee_pose = self.ur5e_solver_.fk(np.array(joint_array))
-            scipy_rotation = R.from_matrix(ee_pose[:3,:3])
-            scipy_quaternion = scipy_rotation.as_quat()
-            qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_)
+        
+    def listenerCallbackOnlineDebug(self,msg):
+        self.i_ += 1
+        online_input_folder = 'franka_to_franka'
+        if not os.path.exists(online_input_folder):
+            os.makedirs(online_input_folder)
+        demo_input_folder = online_input_folder + '/demo_' + str(msg.demo_num.data) 
+        if not os.path.exists(demo_input_folder):
+            os.makedirs(demo_input_folder)
+        joints = msg.joints
+        joint_array = np.array(joints)
+        gripper = joint_array[-1]
+        joint_array = joint_array[:-1]
+        ee_pose = self.ur5e_solver_.fk(np.array(joint_array))
+        scipy_rotation = R.from_matrix(ee_pose[:3,:3])
+        scipy_quaternion = scipy_rotation.as_quat()
+        qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_)
+        if(msg.demo_num.data == 1):
+            self.pdb_debug_ = True
+        if qout is not None:
             self.q_init_ = qout
             # Hardcoded gripper
             qout_list = qout.tolist()
+            
             panda_gripper_command = -0.05702400673569841 * gripper +  0.02670973458948458
             qout_list.append(panda_gripper_command)
             qout_msg = Float64MultiArray()
             qout_msg.data = qout_list
             self.panda_joint_command_publisher_.publish(qout_msg)
             self.joint_commands_callback(qout_msg)
-            self.setupMeshes(rgb,depth,segmentation)
-            end_time = time.time()
+            self.robosuite_rgb_ = msg.rgb
+            self.robosuite_depth_ = msg.depth_map
+            self.robosuite_seg_ = msg.segmentation
+            self.robosuite_qout_list_ = qout_list
+            self.hdf5_msg_ = msg
+        else:
+            print("WARNING HIT IK ON FRANKA ERROR")
 
-    def listenerCallbackOnlineDebug(self,msg):
-        self.i_ += 1
-        online_input_folder = 'offline_ur5e_input'
-        if not os.path.exists(online_input_folder):
-            os.makedirs(online_input_folder)
-        online_input_num_folder = online_input_folder + '/offline_ur5e_' + str(int(self.i_ / 2)) 
-        if not os.path.exists(online_input_num_folder):
-            os.makedirs(online_input_num_folder)
-        rgb_np = np.array(msg.rgb,dtype=np.uint8).reshape((msg.segmentation.width,msg.segmentation.height,3))
-        cv2.imwrite(online_input_num_folder+'/rgb.png',rgb_np)
-        depth_np = np.array(msg.depth_map,dtype=np.float64).reshape((msg.segmentation.width,msg.segmentation.height))
-        np.save(online_input_num_folder+'/depth.npy',depth_np)
-        seg_color = self.cv_bridge_.imgmsg_to_cv2(msg.segmentation)
-        seg = cv2.cvtColor(seg_color,cv2.COLOR_BGR2GRAY)
-        cv2.imwrite(online_input_num_folder+'/seg.png',seg)
-        np.save(online_input_num_folder+'/joints.npy',np.array(msg.joints))
-        rgb = msg.rgb
-        depth = msg.depth_map
-        segmentation = msg.segmentation
-        joints = msg.joints
-        joint_array = np.array(joints)
-        gripper = joint_array[-1]
-        joint_array = joint_array[:-1]
+    # def listenerCallback(self,msg):
+    #     if self.is_ready_:
+    #         self.offline_ = True
+    #         start_time = time.time()
+    #         # path_array = msg.rgb.split('/')
+    #         # online_input_folder = '/'.join(path_array[:-3]) + '/offline_ur5e_input'
+    #         # if not os.path.exists(online_input_folder):
+    #         #     os.makedirs(online_input_folder)
+    #         # online_input_num_folder = online_input_folder + '/' + path_array[-2]
+    #         # if not os.path.exists(online_input_num_folder):
+    #         #     os.makedirs(online_input_num_folder)
+    #         # input_rgb_path = online_input_folder + '/' +'/'.join(path_array[-2:])
+    #         rgb_image = cv2.imread(msg.rgb)
+    #         # cv2.imwrite(input_rgb_path,rgb_image)
+    #         rgb_array = rgb_image.flatten().tolist()
+    #         depth_image = np.load(msg.depth)
+    #         # path_array = msg.depth.split('/')
+    #         # input_depth_path = online_input_folder + '/' +'/'.join(path_array[-2:])
+    #         # np.save(input_depth_path,depth_image)
+    #         depth_array = depth_image.flatten().tolist()
+    #         self.seg_file_ = msg.segmentation
+    #         segmentation_image = cv2.imread(msg.segmentation)
+    #         # path_array = msg.segmentation.split('/')
+    #         # input_segmentation_path = online_input_folder + '/' +'/'.join(path_array[-2:])
+    #         # cv2.imwrite(input_segmentation_path,segmentation_image)
+    #         segmentation_ros_image = self.cv_bridge_.cv2_to_imgmsg(segmentation_image)
+    #         joint_array = np.load(msg.joints).tolist()
+    #         # path_array = msg.joints.split('/')
+    #         # input_joints_path = online_input_folder + '/' +'/'.join(path_array[-2:])
+    #         # np.save(input_joints_path,np.array(joint_array))
+    #         input_file_robosuite_data_msg = InputFilesRobosuiteData()
+    #         input_file_robosuite_data_msg.rgb = rgb_array
+    #         input_file_robosuite_data_msg.depth_map = depth_array
+    #         input_file_robosuite_data_msg.segmentation = segmentation_ros_image
+    #         input_file_robosuite_data_msg.joints = joint_array
+    #         self.listenerCallbackOnlineDebug(input_file_robosuite_data_msg)
+    #         return
+    #         rgb = msg.rgb
+    #         depth = msg.depth
+    #         segmentation = msg.segmentation
+    #         joints = msg.joints
+    #         joint_array = np.load(joints)
+    #         gripper = joint_array[-1]
+    #         joint_array = joint_array[:-1]
+            
+    #         ee_pose = self.ur5e_solver_.fk(np.array(joint_array))
+    #         scipy_rotation = R.from_matrix(ee_pose[:3,:3])
+    #         scipy_quaternion = scipy_rotation.as_quat()
+    #         qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_)
+    #         self.q_init_ = qout
+    #         # Hardcoded gripper
+    #         qout_list = qout.tolist()
+    #         print(gripper)
+    #         panda_gripper_command = -0.05702400673569841 * gripper +  0.02670973458948458
+    #         qout_list.append(panda_gripper_command)
+    #         qout_msg = Float64MultiArray()
+    #         qout_msg.data = qout_list
+    #         self.panda_joint_command_publisher_.publish(qout_msg)
+    #         self.joint_commands_callback(qout_msg)
+    #         self.setupMeshes(rgb,depth,segmentation)
+    #         end_time = time.time()
+    #         print("Total time: " + str(end_time - start_time) + " s")
+
+    # def listenerCallbackOnlineDebug(self,msg):
+    #     self.i_ += 1
+    #     online_input_folder = 'offline_ur5e_input'
+    #     if not os.path.exists(online_input_folder):
+    #         os.makedirs(online_input_folder)
+    #     online_input_num_folder = online_input_folder + '/offline_ur5e_' + str(int(self.i_ / 2)) 
+    #     if not os.path.exists(online_input_num_folder):
+    #         os.makedirs(online_input_num_folder)
+    #     rgb_np = np.array(msg.rgb,dtype=np.uint8).reshape((msg.segmentation.width,msg.segmentation.height,3))
+    #     cv2.imwrite(online_input_num_folder+'/rgb.png',rgb_np)
+    #     depth_np = np.array(msg.depth_map,dtype=np.float64).reshape((msg.segmentation.width,msg.segmentation.height))
+    #     np.save(online_input_num_folder+'/depth.npy',depth_np)
+    #     seg_color = self.cv_bridge_.imgmsg_to_cv2(msg.segmentation)
+    #     seg = cv2.cvtColor(seg_color,cv2.COLOR_BGR2GRAY)
+    #     cv2.imwrite(online_input_num_folder+'/seg.png',seg)
+    #     np.save(online_input_num_folder+'/joints.npy',np.array(msg.joints))
+    #     rgb = msg.rgb
+    #     depth = msg.depth_map
+    #     segmentation = msg.segmentation
+    #     joints = msg.joints
+    #     joint_array = np.array(joints)
+    #     gripper = joint_array[-1]
+    #     joint_array = joint_array[:-1]
         
-        ee_pose = self.ur5e_solver_.fk(np.array(joint_array))
-        scipy_rotation = R.from_matrix(ee_pose[:3,:3])
-        scipy_quaternion = scipy_rotation.as_quat()
-        qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_)
-        b_xyz = 1e-5
-        b_rpy = 1e-3
-        while(qout is None):
-            b_xyz *= 10
-            b_rpy *= 10
-            qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_,bx=b_xyz,by=b_xyz,bz=b_xyz,brx=b_rpy,bry=b_rpy,brz=b_rpy)
-            if(b_xyz == 0.01):
-                print("Couldn't find good IK")
-                qout = self.q_init_
-        print("Bound xyz: " + str(b_xyz))
-        self.q_init_ = qout
-        # Hardcoded gripper
-        qout_list = qout.tolist()
+    #     ee_pose = self.ur5e_solver_.fk(np.array(joint_array))
+    #     scipy_rotation = R.from_matrix(ee_pose[:3,:3])
+    #     scipy_quaternion = scipy_rotation.as_quat()
+    #     qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_)
         
-        panda_gripper_command = -0.05702400673569841 * gripper +  0.02670973458948458
-        qout_list.append(panda_gripper_command)
-        qout_msg = Float64MultiArray()
-        qout_msg.data = qout_list
-        self.panda_joint_command_publisher_.publish(qout_msg)
-        self.joint_commands_callback(qout_msg)
-        self.robosuite_rgb_ = msg.rgb
-        self.robosuite_depth_ = msg.depth_map
-        self.robosuite_seg_ = msg.segmentation
-        self.robosuite_qout_list_ = qout_list
-        # else:
-        #     qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_,bx=1e-3,by=1e-3,bz=1e-3)
-        #     print("WARNING HIT IK ON FRANKA ERROR")
+    #     if qout is not None:
+    #         self.q_init_ = qout
+    #         # Hardcoded gripper
+    #         qout_list = qout.tolist()
+            
+    #         panda_gripper_command = -0.05702400673569841 * gripper +  0.02670973458948458
+    #         qout_list.append(panda_gripper_command)
+    #         qout_msg = Float64MultiArray()
+    #         qout_msg.data = qout_list
+    #         self.panda_joint_command_publisher_.publish(qout_msg)
+    #         self.joint_commands_callback(qout_msg)
+    #         self.robosuite_rgb_ = msg.rgb
+    #         self.robosuite_depth_ = msg.depth_map
+    #         self.robosuite_seg_ = msg.segmentation
+    #         self.robosuite_qout_list_ = qout_list
+    #     else:
+    #         print("WARNING HIT IK ON FRANKA ERROR")
         
 
     def listenerCallbackData(self,msg):

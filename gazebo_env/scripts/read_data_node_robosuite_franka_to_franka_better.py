@@ -64,10 +64,10 @@ class ReadData(Node):
         self.i_ = 0
         self.j_ = 0
         
-        self.next_input_subscriber = self.create_subscription(Bool,'/ready_for_next_input',self.sendInput,1)
+        #self.next_input_subscriber = self.create_subscription(Bool,'/ready_for_next_input',self.sendInput,1)
         self.file_  = h5py.File(self.hdf5_,'r+')
         self.i_limit_ = len(self.file_['data'].keys())
-        self.demo_list_ = [f"demo_{i}" for i in range(1, self.i_limit_)]
+        self.demo_list_ = [f"demo_{i}" for i in range(0, self.i_limit_)]
         self.obses_ = []
         self.j_limits_ = []
         for demo_str in self.demo_list_:
@@ -79,25 +79,25 @@ class ReadData(Node):
         self.is_ready_ = True
 
     def sendInput(self,msg=None):
-        rgb = self.obses_[self.i_]['agentview_image'][self.j_]
-        joints = self.obses_[self.i_]['robot0_joint_pos'][self.j_]
-        gripper = abs(self.obses_[self.i_]['robot0_gripper_qpos'][self.j_][0])
-        joints_and_gripper = np.append(joints,gripper)
-        input_msg = InputFilesFrankaToFranka()
-        input_msg.rgb = self.cv_bridge_.cv2_to_imgmsg(rgb)
-        input_msg.joints = joints_and_gripper.tolist()
-        demo_num_msg = Int16()
-        traj_num_msg = Int16()
-        demo_num_msg.data = self.i_
-        traj_num_msg.data = self.j_
-        input_msg.demo_num = demo_num_msg
-        input_msg.traj_num = traj_num_msg
-        self.publisher_.publish(input_msg)
-        print("Publishing Demo " + str(self.i_) + " " + str(self.j_) + '/' + str(self.j_limits_[self.i_]))
-        self.j_ += 1
-        if(self.j_ == self.j_limits_[self.i_]):
-            self.i_ += 1
-            self.j_ = 0
+        for i in range(self.i_limit_):
+            for j in range(self.j_limits_[i]):
+                print("Publishing Demo " + str(i) + " " + str(j) + '/' + str(self.j_limits_[i]))
+                rgb = self.obses_[i]['agentview_image'][j]
+                joints = self.obses_[i]['robot0_joint_pos'][j]
+                gripper = abs(self.obses_[i]['robot0_gripper_qpos'][j][0])
+                joints_and_gripper = np.append(joints,gripper)
+                input_msg = InputFilesFrankaToFranka()
+                input_msg.rgb = self.cv_bridge_.cv2_to_imgmsg(rgb)
+                input_msg.joints = joints_and_gripper.tolist()
+                demo_num_msg = Int16()
+                traj_num_msg = Int16()
+                demo_num_msg.data = i
+                traj_num_msg.data = j
+                input_msg.demo_num = demo_num_msg
+                input_msg.traj_num = traj_num_msg
+                self.publisher_.publish(input_msg)
+                time.sleep(1)
+
     
 
 

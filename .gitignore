@@ -7,3 +7,4 @@ gazebo_env/robosuite_offline_2/*
 gazebo_env/franka_to_franka/*
 gazebo_env/robosuite_offline_3/*
 gazebo_env/robosuite_offline_4/*
+gazebo_env/diffusion_data/*
