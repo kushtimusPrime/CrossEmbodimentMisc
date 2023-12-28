@@ -32,13 +32,16 @@ import kinpy as kp
 from geometry_msgs.msg import Vector3, Quaternion
 from scipy.spatial.transform import Rotation as R
 from message_filters import ApproximateTimeSynchronizer, Subscriber
-
+import pathlib
 class WriteData(Node):
     def __init__(self):
         super().__init__('write_data_node')
         self.is_ready_ = False
         self.thetas_ = None
         self.debug_ = False
+        self.directory_path_ = pathlib.Path(__file__).parent.resolve()
+        import pdb
+        pdb.set_trace()
         self.panda_urdf_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/description/urdf/panda_ik_robosuite.urdf"        
         self.panda_solver_ = TracIKSolver(self.panda_urdf_,"world","panda_ee")
         self.ur5e_urdf_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/description/urdf/ur5e_ik_robosuite.urdf"

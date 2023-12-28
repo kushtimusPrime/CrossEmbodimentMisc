@@ -112,7 +112,7 @@ class PointCloudPublisher(Node):
         for coord in all_pixels:
             x,y = coord
             mask_image[round(y),round(x)] = white_color
-        cv2.imwrite('/home/benchturtle/gazebo_mask.jpg',mask_image)
+        cv2.imwrite('gazebo_mask.jpg',mask_image)
         #mask_image = cv2.convertScaleAbs(mask_image, alpha=(255.0/65535.0))
         ros_mask_image = self.cv_bridge_.cv2_to_imgmsg(mask_image,encoding="bgr8")
         self.full_mask_image_publisher_.publish(ros_mask_image)

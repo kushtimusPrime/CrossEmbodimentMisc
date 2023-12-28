@@ -89,7 +89,7 @@ namespace gazebo
         try
         {
             cv_ptr = cv_bridge::toCvCopy(this->rgb_msg_, this->rgb_msg_->encoding);
-            cv::imwrite("/home/benchturtle/pog.png",cv_ptr->image);
+            cv::imwrite("pog.png",cv_ptr->image);
             std::cout << "GOTEEEEEEM" << std::endl;
         }
         catch (cv_bridge::Exception& e)

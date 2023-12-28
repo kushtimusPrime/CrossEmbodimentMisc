@@ -131,7 +131,7 @@ class PointCloudPublisher(Node):
                 mask_image[round(y),round(x)-5] = white_color
                 depth_image[round(y),round(x)-5] = depth_data[i]
                 i += 1
-            np.save('/home/benchturtle/gazebo_robot_depth.npy',depth_image)
+            np.save('gazebo_robot_depth.npy',depth_image)
             old_mask_image = mask_image
             mask_image = cv2.cvtColor(mask_image, cv2.COLOR_RGB2GRAY)
             _, mask_image = cv2.threshold(mask_image, 128, 255, cv2.THRESH_BINARY)
@@ -144,8 +144,8 @@ class PointCloudPublisher(Node):
                 # Apply the gazebo_mask to the original image using element-wise multiplication
                 gazebo_masked_image = cv2.bitwise_and(self.original_image_, self.original_image_, mask=mask_image)
                 gazebo_masked_image[:, :, 0], gazebo_masked_image[:, :, 2] = gazebo_masked_image[:, :, 2].copy(), gazebo_masked_image[:, :, 0].copy()
-                cv2.imwrite('/home/benchturtle/gazebo_robot_only.jpg',gazebo_masked_image)
-                cv2.imwrite('/home/benchturtle/gazebo_mask.jpg',mask_image)
+                cv2.imwrite('gazebo_robot_only.jpg',gazebo_masked_image)
+                cv2.imwrite('gazebo_mask.jpg',mask_image)
                 #mask_image = cv2.convertScaleAbs(mask_image, alpha=(255.0/65535.0))
                 ros_mask_image = self.cv_bridge_.cv2_to_imgmsg(old_mask_image,encoding="bgr8")
                 self.full_mask_image_publisher_.publish(ros_mask_image)
@@ -169,7 +169,7 @@ class PointCloudPublisher(Node):
             pcd = full_open3d_mesh.sample_points_uniformly(number_of_points=20000)
             pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
             pcd_data = np.asarray(pcd.points)
-            o3d.io.write_point_cloud('/home/benchturtle/ur5e.pcd',pcd)
+            o3d.io.write_point_cloud('ur5e.pcd',pcd)
             point_cloud_msg = PointCloud2()
             point_cloud_msg.header = Header()
             point_cloud_msg.header.frame_id = "camera_color_optical_frame"
@@ -203,7 +203,7 @@ class PointCloudPublisher(Node):
             pcd = open3d_mesh.sample_points_uniformly(number_of_points=20000)
             pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) / 1000)
             pcd_data = np.asarray(pcd.points)
-            o3d.io.write_point_cloud('/home/benchturtle/ur5e.pcd',pcd)
+            o3d.io.write_point_cloud('ur5e.pcd',pcd)
             point_cloud_msg = PointCloud2()
             point_cloud_msg.header = Header()
             point_cloud_msg.header.frame_id = "camera_color_optical_frame"
@@ -695,7 +695,7 @@ class PointCloudPublisher(Node):
             
         #     print(glob.glob(self.dae_main_path_ + '/*.dae'))
         #     exit()
-        #     self.base_filepath_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/meshes/ur5e/visual/base.dae"
+        #     self.base_filepath_ = "cross_embodiment_ws/src/gazebo_env/meshes/ur5e/visual/base.dae"
 
         # def timer_callback(self):
         #     mesh = trimesh.load(self.base_filepath_)

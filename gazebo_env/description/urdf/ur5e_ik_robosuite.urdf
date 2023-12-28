@@ -11,7 +11,7 @@
     <child link="base_link"/>
   </joint>
   <link name="base_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/visual/base.dae"/>
@@ -24,7 +24,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/collision/base.stl" scale="1.0 1.0 1.0"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="4.0"/>
       <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
@@ -40,7 +40,7 @@
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="shoulder_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/visual/shoulder.dae"/>
@@ -53,7 +53,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/collision/shoulder.stl" scale="1.0 1.0 1.0"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="3.7"/>
       <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
@@ -69,7 +69,7 @@
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="upper_arm_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -83,7 +83,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/collision/upperarm.stl" scale="1.0 1.0 1.0"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="8.393"/>
       <origin rpy="0 0 0" xyz="0.0 0.0 0.2125"/>
@@ -99,7 +99,7 @@
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="forearm_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/visual/forearm.dae"/>
@@ -112,7 +112,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/collision/forearm.stl" scale="1.0 1.0 1.0"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="2.275"/>
       <origin rpy="0 0 0" xyz="0.0 0.0 0.196"/>
@@ -128,7 +128,7 @@
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="wrist_1_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/visual/wrist1.dae"/>
@@ -141,7 +141,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/collision/wrist1.stl" scale="1.0 1.0 1.0"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="1.219"/>
       <origin rpy="0 0 0" xyz="0.0 0.127 0.0"/>
@@ -157,7 +157,7 @@
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="wrist_2_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/visual/wrist2.dae"/>
@@ -170,7 +170,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/collision/wrist2.stl" scale="1.0 1.0 1.0"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="1.219"/>
       <origin rpy="0 0 0" xyz="0.0 0.0 0.1"/>
@@ -186,7 +186,7 @@
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="wrist_3_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/visual/wrist3.dae"/>
@@ -199,7 +199,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/ur5e/collision/wrist3.stl" scale="1.0 1.0 1.0"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.1879"/>
       <origin rpy="1.57079632679 0 0" xyz="0.0 0.0771 0.0"/>
@@ -225,7 +225,7 @@
     <origin rpy="1.5708 0.0 1.5708" xyz="0.0 0.089 0.0"/>
   </joint>
   <link name="robotiq_85_base_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_base_link.dae"/>
@@ -235,7 +235,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_base_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.636951"/>
       <origin xyz="0.0 0.0 0.0"/>
@@ -258,7 +258,7 @@
     <mimic joint="robotiq_85_left_knuckle_joint"/>
   </joint>
   <link name="robotiq_85_left_knuckle_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_knuckle_link.dae"/>
@@ -268,7 +268,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_knuckle_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.018491"/>
       <origin xyz="0.0 0.0 0.0"/>
@@ -276,7 +276,7 @@
     </inertial>
   </link>
   <link name="robotiq_85_right_knuckle_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_knuckle_link.dae"/>
@@ -286,7 +286,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_knuckle_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.018491"/>
       <origin xyz="0.0 0.0 0.0"/>
@@ -304,7 +304,7 @@
     <origin rpy="0 0 0" xyz="-0.00408552455 -0.03148604435 0.0"/>
   </joint>
   <link name="robotiq_85_left_finger_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_finger_link.dae"/>
@@ -314,7 +314,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_finger_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.027309"/>
       <origin xyz="0.0 0.0 0.0"/>
@@ -322,7 +322,7 @@
     </inertial>
   </link>
   <link name="robotiq_85_right_finger_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_finger_link.dae"/>
@@ -332,7 +332,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_finger_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.027309"/>
       <origin xyz="0.0 0.0 0.0"/>
@@ -356,7 +356,7 @@
     <mimic joint="robotiq_85_left_knuckle_joint" offset="0"/>
   </joint>
   <link name="robotiq_85_left_inner_knuckle_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_inner_knuckle_link.dae"/>
@@ -366,7 +366,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_inner_knuckle_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.029951"/>
       <origin xyz="0.0 0.0 0.0"/>
@@ -374,7 +374,7 @@
     </inertial>
   </link>
   <link name="robotiq_85_right_inner_knuckle_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_inner_knuckle_link.dae"/>
@@ -384,7 +384,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_inner_knuckle_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.029951"/>
       <origin xyz="0.0 0.0 0.0"/>
@@ -408,7 +408,7 @@
     <mimic joint="robotiq_85_left_knuckle_joint" multiplier="-1"/>
   </joint>
   <link name="robotiq_85_left_finger_tip_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_finger_tip_link.dae"/>
@@ -418,7 +418,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_finger_tip_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.019555"/>
       <origin xyz="0.0 0.0 0.0"/>
@@ -426,7 +426,7 @@
     </inertial>
   </link>
   <link name="robotiq_85_right_finger_tip_link">
-    <visual>
+    <!-- <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/visual/robotiq_85_finger_tip_link.dae"/>
@@ -436,7 +436,7 @@
       <geometry>
         <mesh filename="file:///home/benchturtle/cross_embodiment_ws/install/gazebo_env/share/gazebo_env/meshes/ur5e_nvidia/robotiq_85_gripper/collision/robotiq_85_finger_tip_link.stl"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <mass value="0.019555"/>
       <origin xyz="0.0 0.0 0.0"/>

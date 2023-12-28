@@ -2,8 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-import trimesh
-import open3d as o3d
+# import open3d as o3d
 from std_msgs.msg import Header, Float64MultiArray,Bool
 from sensor_msgs.msg import PointCloud2, PointField, CameraInfo, Image
 import numpy as np
@@ -21,13 +20,14 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from sensor_msgs_py import point_cloud2
 import cv2
+import pathlib
 from cv_bridge import CvBridge
 import time
 from input_filenames_msg.msg import InputFilesRobosuite, InputFilesRobosuiteData
 from sensor_msgs.msg import JointState
 from tracikpy import TracIKSolver
-from mdh.kinematic_chain import KinematicChain
-from mdh import UnReachable
+#from mdh.kinematic_chain import KinematicChain
+#from mdh import UnReachable
 import kinpy as kp
 from geometry_msgs.msg import Vector3, Quaternion
 from scipy.spatial.transform import Rotation as R
@@ -39,9 +39,10 @@ class WriteData(Node):
         self.is_ready_ = False
         self.thetas_ = None
         self.debug_ = False
-        self.panda_urdf_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/description/urdf/panda_ik_robosuite.urdf"        
+        self.directory_path_ = pathlib.Path(__file__).parent.resolve()
+        self.panda_urdf_ = os.path.join(self.directory_path_,'../../../../src/gazebo_env/description/urdf/panda_ik_robosuite.urdf')        
         self.panda_solver_ = TracIKSolver(self.panda_urdf_,"world","panda_ee")
-        self.ur5e_urdf_ = "/home/benchturtle/cross_embodiment_ws/src/gazebo_env/description/urdf/ur5e_ik_robosuite.urdf"
+        self.ur5e_urdf_ = os.path.join(self.directory_path_,'../../../../src/gazebo_env/description/urdf/ur5e_ik_robosuite.urdf') 
         self.chain_ = kp.build_chain_from_urdf(open(self.panda_urdf_).read())
         self.ur5e_solver_ = TracIKSolver(self.ur5e_urdf_,"world","ur5e_ee_link")
 
@@ -357,7 +358,7 @@ class WriteData(Node):
             pcd.transform(np.linalg.inv(world_to_camera))
             pointcloud_np = np.asarray(pcd.points)
 
-            # loaded = np.load('/home/benchturtle/cross_embodiment_ws/src/gazebo_env/robotsuite_outputs/UR5e_output3.npy', allow_pickle=True)
+            # loaded = np.load('cross_embodiment_ws/src/gazebo_env/robotsuite_outputs/UR5e_output3.npy', allow_pickle=True)
 
         depth_data = pointcloud_np[:,2]
 
@@ -569,7 +570,7 @@ class WriteData(Node):
                 cv2.imwrite('gazebo_masked_image.png',gazebo_masked_image)
                 self.inpainting(rgb,depth,segmentation,gazebo_masked_image,mask_image,depth_image)
             return
-            np.save('/home/benchturtle/gazebo_robot_depth.npy',depth_image)
+            np.save('gazebo_robot_depth.npy',depth_image)
             old_mask_image = mask_image
             mask_image = cv2.cvtColor(mask_image, cv2.COLOR_RGB2GRAY)
             _, mask_image = cv2.threshold(mask_image, 128, 255, cv2.THRESH_BINARY)
@@ -588,8 +589,8 @@ class WriteData(Node):
                 # Apply the gazebo_mask to the original image using element-wise multiplication
                 gazebo_masked_image = cv2.bitwise_and(self.original_image_, self.original_image_, mask=mask_image)
                 gazebo_masked_image[:, :, 0], gazebo_masked_image[:, :, 2] = gazebo_masked_image[:, :, 2].copy(), gazebo_masked_image[:, :, 0].copy()
-                cv2.imwrite('/home/benchturtle/gazebo_robot_only.jpg',gazebo_masked_image)
-                cv2.imwrite('/home/benchturtle/gazebo_mask.jpg',mask_image)
+                cv2.imwrite('gazebo_robot_only.jpg',gazebo_masked_image)
+                cv2.imwrite('gazebo_mask.jpg',mask_image)
                 #mask_image = cv2.convertScaleAbs(mask_image, alpha=(255.0/65535.0))
                 ros_mask_image = self.cv_bridge_.cv2_to_imgmsg(old_mask_image,encoding="bgr8")
                 self.full_mask_image_publisher_.publish(ros_mask_image)
