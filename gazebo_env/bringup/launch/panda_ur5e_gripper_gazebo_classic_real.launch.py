@@ -68,7 +68,7 @@ def generate_launch_description():
                 [
                     FindPackageShare("gazebo_env"),
                     "urdf",
-                    "panda_arm_hand_camera_scene_robosuite.urdf.xacro",
+                    "panda_arm_hand_ur5e_gripper_camera_scene_real.urdf.xacro",
                 ]
             ),
             " ",
@@ -108,7 +108,7 @@ def generate_launch_description():
 
     joint_state_publisher_node = Node(
         package="gazebo_env",
-        executable="full_panda_joint_state_publisher_node.py",
+        executable="full_real_panda_ur5e_gripper_joint_state_publisher_node.py",
         output="screen",
     )
 

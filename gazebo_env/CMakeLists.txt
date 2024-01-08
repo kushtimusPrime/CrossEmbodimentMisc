@@ -68,6 +68,18 @@ ament_target_dependencies(panda_control_plugin
 )
 target_link_libraries(panda_control_plugin ${GAZEBO_LIBRARIES} ${OpenCV_LIBS})
 
+add_library(panda_control_ur5e_gripper_real_plugin SHARED panda_control_ur5e_gripper_real_plugin/panda_control_ur5e_gripper_real_plugin.cc)
+ament_target_dependencies(panda_control_ur5e_gripper_real_plugin
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "message_filters"
+  "cv_bridge"
+)
+target_link_libraries(panda_control_ur5e_gripper_real_plugin ${GAZEBO_LIBRARIES} ${OpenCV_LIBS})
+
 add_library(gripper_control_plugin SHARED gripper_control_plugin/gripper_control_plugin.cc)
 ament_target_dependencies(gripper_control_plugin
   "gazebo_dev"
@@ -212,6 +224,11 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  scripts/panda_ur5_gripper_real_joint_command_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
   scripts/ur5e_joint_command_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -222,6 +239,16 @@ install(PROGRAMS
 
 install(PROGRAMS
   scripts/full_panda_joint_state_publisher_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/real_offline_check_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/full_real_panda_ur5e_gripper_joint_state_publisher_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

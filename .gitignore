@@ -8,3 +8,5 @@ gazebo_env/franka_to_franka/*
 gazebo_env/robosuite_offline_3/*
 gazebo_env/robosuite_offline_4/*
 gazebo_env/diffusion_data/*
+gazebo_env/real_check/check_panda.npy
+gazebo_env/real_check/check_ur5.npy

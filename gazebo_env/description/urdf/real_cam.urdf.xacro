@@ -103,23 +103,26 @@
         <pose> 0 0 0 0 0 0 </pose>
         <visualize>false</visualize>
         <update_rate>30</update_rate>
+        <!-- Focal Length = Width * 0.5 / tan(Hor. FOV (in radians) * 0.5)-->
         <camera>
-            <!-- Focal Length = Width * 0.5 / tan(Hor. FOV (in radians) * 0.5)-->
-            <horizontal_fov>0.7853981634</horizontal_fov>
+            <horizontal_fov>1.768165077</horizontal_fov>
             <image>
                 <format>R8G8B8</format>
-                <width>256</width>
-                <height>256</height>
+                <width>1280</width>
+                <height>720</height>
                 <!-- <width>256</width>
                 <height>256</height> -->
             </image>
             <clip>
-                <near>0.05</near>
+                <near>0.005</near>
                 <far>8.0</far>
             </clip>
         </camera>
         <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
             <frame_name>camera_color_optical_frame</frame_name>
+            <!-- <cx>647.53735352</cx> -->
+            <!-- <cy>367.65203857</cy> -->
+            <min_depth>0.005</min_depth>
         </plugin>
       </sensor>
     </gazebo>
