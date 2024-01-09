@@ -9,12 +9,10 @@
   <!-- Can task-->
   <!-- <xacro:panda_arm connected_to="world" xyz="-0.56 -0.1 10.912"/>  -->
   <xacro:hand ns="panda" rpy="0 0 ${-pi/4}" connected_to="panda_link8"/>
-  <xacro:include filename="$(find gazebo_env)/urdf/d435.urdf.xacro" />
-
   <!-- Can task-->
   <!-- <xacro:panda_arm connected_to="world" xyz="-0.56 -0.1 10.912"/>  -->
   <!-- <xacro:hand ns="panda" rpy="0 0 ${-pi/4}" connected_to="panda_link8"/> -->
-  <xacro:include filename="$(find gazebo_env)/urdf/real_cam.urdf.xacro" />
+  <xacro:include filename="$(find gazebo_env)/urdf/real_panda_cam.urdf.xacro" />
   <xacro:sensor_d435 parent="world">
     <!-- for some reason we have to modify the xyz because it is a little shifted-->
 

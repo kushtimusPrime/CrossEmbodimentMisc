@@ -91,14 +91,27 @@ class ImageSubscriber(Node):
     def dummyInpainting(self,rgb,gazebo_rgb,gazebo_seg):
         _, gazebo_seg = cv2.threshold(gazebo_seg, 128, 255, cv2.THRESH_BINARY)
         gazebo_segmentation_mask_255 = gazebo_seg
-        inverted_segmentation_mask_255 = cv2.bitwise_not(gazebo_seg)
+        inverted_segmentation_mask_255_original = cv2.bitwise_not(gazebo_seg)
+        cv2.imwrite('inverted_mask1.png',inverted_segmentation_mask_255_original)
+        inverted_segmentation_mask_255 = cv2.erode(inverted_segmentation_mask_255_original,np.ones((3,3),np.uint8),iterations=10)
+        cv2.imwrite('inverted_mask2.png',inverted_segmentation_mask_255)
+        outline_mask = abs(inverted_segmentation_mask_255 - inverted_segmentation_mask_255_original)*255
         gazebo_only = cv2.bitwise_and(gazebo_rgb,gazebo_rgb,mask=gazebo_segmentation_mask_255)
+        gazebo_only = cv2.cvtColor(gazebo_only,cv2.COLOR_BGR2RGB)
         cv2.imwrite('gazebo_robot_only.png',gazebo_only)
         background_only = cv2.bitwise_and(rgb,rgb,mask=inverted_segmentation_mask_255)
         cv2.imwrite('background_only.png',background_only)
+        background_only_filled = cv2.inpaint(background_only,outline_mask,3,cv2.INPAINT_TELEA)
+        cv2.imwrite('background_only_filled.png',background_only_filled)
+        dummy_inpaint = gazebo_only + background_only_filled
+        cv2.imwrite('dummy_inpaint.png',dummy_inpaint)
+        ultimate_robot = cv2.imread('/home/benchturtle/cross_embodiment_ws/ultimate_robot.png')
+        ultimate_background = cv2.imread('/home/benchturtle/cross_embodiment_ws/ultimate_background.png')
+        cv2.imwrite('smart_inpaint.png',ultimate_robot+ultimate_background)
 
     def callback(self, rgb_image_msg, depth_image_msg):
         gazebo_rgb_np = self.cv_bridge_.imgmsg_to_cv2(rgb_image_msg)
+        
         cv2.imwrite('gazebo_rgb.png',gazebo_rgb_np)
         gazebo_depth_np = self.cv_bridge_.imgmsg_to_cv2(depth_image_msg)
         cv2.imwrite('inf_mask.png',(np.isinf(gazebo_depth_np)*255).astype(np.uint8))
@@ -107,8 +120,21 @@ class ImageSubscriber(Node):
         gazebo_seg_np = (gazebo_depth_np < 8).astype(np.uint8)
         gazebo_seg_255_np = 255 * gazebo_seg_np
         cv2.imwrite('gazebo_seg.png',gazebo_seg_255_np)
-        robosuite_rgb = cv2.imread('/home/benchturtle/cross_embodiment_ws/src/gazebo_env/real_check/panda_check_4.png')
-        cv2.imwrite('real.png',robosuite_rgb)
+        robosuite_rgb = cv2.imread('/home/benchturtle/cross_embodiment_ws/src/gazebo_env/real_check/ur5e_check_0.png')
+        
+        robosuite_depth = np.load('/home/benchturtle/cross_embodiment_ws/src/gazebo_env/real_check/ur5e_depth_0.npy')
+        cv2.imwrite('real_rgb.png',robosuite_rgb)
+        cv2.imwrite('nan_depth_mask.png',(np.isnan(robosuite_depth)*255).astype(np.uint8))
+        cv2.imwrite('inf_depth_mask.png',(np.isinf(robosuite_depth)*255).astype(np.uint8))
+        inf_mask = (np.isinf(robosuite_depth)*255).astype(np.uint8)
+        robosuite_depth_inf_filled = cv2.inpaint(robosuite_depth,inf_mask,1,cv2.INPAINT_TELEA)
+        cv2.imwrite('inf_depth_mask2.png',(np.isinf(robosuite_depth_inf_filled)*255).astype(np.uint8))
+        nan_mask = (np.isnan(robosuite_depth_inf_filled)*255).astype(np.uint8)
+        robosuite_depth_inf_filled_nan_filled = cv2.inpaint(robosuite_depth_inf_filled,nan_mask,1,cv2.INPAINT_TELEA)
+        cv2.imwrite('nan_depth_mask2.png',(np.isnan(robosuite_depth_inf_filled_nan_filled)*255).astype(np.uint8))
+        robosuite_depth_no_nan = np.nan_to_num(robosuite_depth_inf_filled_nan_filled, nan=0)
+        normalized_robosuite_depth_image = self.normalize_depth_image(robosuite_depth_no_nan)
+        cv2.imwrite('real_depth.png',normalized_robosuite_depth_image)
         robosuite_depth = gazebo_depth_np
         robosuite_seg = gazebo_seg_255_np
         self.dummyInpainting(robosuite_rgb,gazebo_rgb_np,gazebo_seg_255_np)
