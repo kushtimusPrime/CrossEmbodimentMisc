@@ -13,8 +13,8 @@ class ImageSubscriber(Node):
     def __init__(self):
         super().__init__('image_subscriber')
         self.cv_bridge_ = CvBridge()
-        depth_image_sub = Subscriber(self, Image, '/depth_camera/image_raw')
-        depth_depth_image_sub = Subscriber(self, Image, '/depth_camera/depth/image_raw')
+        depth_image_sub = Subscriber(self, Image, '/ur5_camera/image_raw')
+        depth_depth_image_sub = Subscriber(self, Image, '/ur5_camera/depth/image_raw')
 
         # Synchronize the two image topics based on their timestamps
         ts = TimeSynchronizer([depth_image_sub, depth_depth_image_sub], 10)
@@ -89,6 +89,8 @@ class ImageSubscriber(Node):
         cv2.imwrite('gazebo_inpaint.png',image_8bit)
 
     def dummyInpainting(self,rgb,gazebo_rgb,gazebo_seg):
+        import pdb
+        pdb.set_trace()
         _, gazebo_seg = cv2.threshold(gazebo_seg, 128, 255, cv2.THRESH_BINARY)
         gazebo_segmentation_mask_255 = gazebo_seg
         inverted_segmentation_mask_255_original = cv2.bitwise_not(gazebo_seg)

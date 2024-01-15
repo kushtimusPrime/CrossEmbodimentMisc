@@ -28,7 +28,7 @@ namespace gazebo
       this->model_name_ = _model->GetName();
       const gazebo_ros::QoS &qos = this->node_->get_qos();
       // Just output a message for now
-      std::cerr << "KUSHTIMUS PRIME" << "\n";
+      std::cerr << "KUSHTIMUS PRIME UR5" << "\n";
       this->robot_subscriber_ = this->node_->create_subscription<std_msgs::msg::Float64MultiArray>(
                 "joint_commands",
                 qos.get_subscription_qos("joint_commands", rclcpp::QoS(1)),

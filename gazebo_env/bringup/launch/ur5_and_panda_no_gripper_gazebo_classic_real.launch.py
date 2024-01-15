@@ -16,17 +16,13 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import (
-    Command,
-    FindExecutable,
-    PathJoinSubstitution,
-    LaunchConfiguration,
-)
+from launch.substitutions import Command, FindExecutable, PathJoinSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
+
     # Declare arguments
     declared_arguments = []
     declared_arguments.append(
@@ -42,20 +38,12 @@ def generate_launch_description():
 
     gazebo_server = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [
-                PathJoinSubstitution(
-                    [FindPackageShare("gazebo_ros"), "launch", "gzserver.launch.py"]
-                )
-            ]
+            [PathJoinSubstitution([FindPackageShare("gazebo_ros"), "launch", "gzserver.launch.py"])]
         )
     )
     gazebo_client = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [
-                PathJoinSubstitution(
-                    [FindPackageShare("gazebo_ros"), "launch", "gzclient.launch.py"]
-                )
-            ]
+            [PathJoinSubstitution([FindPackageShare("gazebo_ros"), "launch", "gzclient.launch.py"])]
         )
     )
 
@@ -65,11 +53,7 @@ def generate_launch_description():
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             PathJoinSubstitution(
-                [
-                    FindPackageShare("gazebo_env"),
-                    "urdf",
-                    "panda_arm_hand_ur5e_gripper_camera_scene_real.urdf.xacro",
-                ]
+               [FindPackageShare("gazebo_env"), "urdf", "ur5_and_panda_no_gripper_camera_scene_real.urdf.xacro"]
             ),
             " ",
             "use_gazebo_classic:=true",
@@ -99,31 +83,25 @@ def generate_launch_description():
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=[
-            "joint_state_broadcaster",
-            "--controller-manager",
-            "/controller_manager",
-        ],
+        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
     )
 
     joint_state_publisher_node = Node(
         package="gazebo_env",
-        executable="full_real_panda_ur5e_gripper_joint_state_publisher_node.py",
-        output="screen",
+        executable="full_ur5_and_panda_no_gripper_joint_state_publisher_node.py",
+        output="screen"
     )
 
     image_sub_node = Node(
-        package="gazebo_env", executable="gazebo_image_test.py", output="screen"
+        package="gazebo_env",
+        executable="gazebo_image_test.py",
+        output="screen"
     )
 
     robot_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=[
-            "forward_position_controller",
-            "--controller-manager",
-            "/controller_manager",
-        ],
+        arguments=["forward_position_controller", "--controller-manager", "/controller_manager"],
     )
 
     nodes = [
@@ -142,8 +120,8 @@ def generate_launch_description():
                 "-1.571",
                 "0.0",  # .33
                 "-1.571",
-                "camera_link",
-                "real_camera_link",
+                "ur5_camera_link",
+                "ur5_real_camera_link",
                 # "0.35", ##original .50
                 # "-0.15", # -.05
                 # "0.0", # changed to .55 from .45
@@ -154,9 +132,31 @@ def generate_launch_description():
                 # "camera_link",
             ],
         ),
-        # image_sub_node
-        # joint_state_broadcaster_spawner,
-        # robot_controller_spawner,
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            arguments=[
+                "0.0",
+                "0.0",
+                "0.0",  # 0.68
+                "-1.571",
+                "0.0",  # .33
+                "-1.571",
+                "panda_camera_link",
+                "panda_real_camera_link",
+                # "0.35", ##original .50
+                # "-0.15", # -.05
+                # "0.0", # changed to .55 from .45
+                # "0",
+                # "0", #original 0
+                # "0.0",#1.57
+                # "base_link",
+                # "camera_link",
+            ],
+        ),
+        #image_sub_node
+        #joint_state_broadcaster_spawner,
+        #robot_controller_spawner,
     ]
 
     return LaunchDescription(declared_arguments + nodes)

@@ -1,5 +1,5 @@
-#ifndef _PANDACONTROL_PLUGIN_HH_
-#define _PANDACONTROL_PLUGIN_HH_
+#ifndef _UR5PANDANOGRIPPERCONTROL_PLUGIN_HH_
+#define _UR5PANDANOGRIPPERCONTROL_PLUGIN_HH_
 
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
@@ -14,13 +14,14 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <chrono>
 namespace gazebo
 {
   /// \brief A plugin to control a NoPhysics sensor.
-  class PandaControlPlugin : public ModelPlugin
+  class Ur5PandaNoGripperControlPlugin : public ModelPlugin
   {
     /// \brief Constructor
-    public: PandaControlPlugin() {}
+    public: Ur5PandaNoGripperControlPlugin() {}
 
     /// \brief The load function is called by Gazebo when the plugin is
     /// inserted into simulation
@@ -34,21 +35,12 @@ namespace gazebo
       this->model_name_ = _model->GetName();
       const gazebo_ros::QoS &qos = this->node_->get_qos();
       // Just output a message for now
-      std::cerr << "KUSHTIMUS PRIME PANDA UR5 GRIPPER" << "\n";
+      std::cerr << "KUSHTIMUS PRIME PANDA AND UR5 NO GRIPPER" << "\n";
       this->robot_subscriber_ = this->node_->create_subscription<std_msgs::msg::Float64MultiArray>(
                 "joint_commands",
                 qos.get_subscription_qos("joint_commands", rclcpp::QoS(1)),
-                std::bind(&PandaControlPlugin::jointCommandMsg, this, std::placeholders::_1));
+                std::bind(&Ur5PandaNoGripperControlPlugin::jointCommandMsg, this, std::placeholders::_1));
       this->gazebo_joint_state_publisher_ = this->node_->create_publisher<sensor_msgs::msg::JointState>("/gazebo_joint_states",1);
-
-      // ROS2 Message Filter Tutorial: https://answers.ros.org/question/366440/ros-2-message_filters-timesynchronizer-minimal-example-does-not-reach-callback-function/
-      rclcpp::QoS qos_(1);
-      auto rmw_qos_profile = qos_.get_rmw_qos_profile();
-      this->rgb_subscriber_.subscribe(this->node_, "/panda_camera/image_raw", rmw_qos_profile);
-      this->depth_subscriber_.subscribe(this->node_, "/panda_camera/depth/image_raw", rmw_qos_profile);
-      this->time_synchronizer_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::Image>>(rgb_subscriber_, depth_subscriber_,1);
-      this->time_synchronizer_->registerCallback(std::bind(&PandaControlPlugin::imageCallback, this, std::placeholders::_1, std::placeholders::_2));
-
     }
 
     //Needs to be const ConstSharedPtr: https://robotics.stackexchange.com/questions/102503/ros2-message-filters-synchronizer-compilation-error
@@ -57,6 +49,8 @@ namespace gazebo
       this->depth_msg_ = depth_msg;
     }
     void jointCommandMsg(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+      auto start_time = std::chrono::high_resolution_clock::now();
+        std::cout << "Start publish" << std::endl;
         physics::WorldPtr world = physics::get_world("default");
         auto model_ptr = world->ModelByName(model_name_);
         auto panda_joint1 = model_ptr->GetJoint("panda_joint1");
@@ -66,34 +60,41 @@ namespace gazebo
         auto panda_joint5 = model_ptr->GetJoint("panda_joint5");
         auto panda_joint6 = model_ptr->GetJoint("panda_joint6");
         auto panda_joint7 = model_ptr->GetJoint("panda_joint7");
+
+        auto ur5_joint1 = model_ptr->GetJoint("shoulder_pan_joint");
+        auto ur5_joint2 = model_ptr->GetJoint("shoulder_lift_joint");
+        auto ur5_joint3 = model_ptr->GetJoint("elbow_joint");
+        auto ur5_joint4 = model_ptr->GetJoint("wrist_1_joint");
+        auto ur5_joint5 = model_ptr->GetJoint("wrist_2_joint");
+        auto ur5_joint6 = model_ptr->GetJoint("wrist_3_joint");
+
         // Needs to coordinate with custon_joint_state_publisher_node.py
-        panda_joint1->SetPosition(0,msg->data[0]);
-        panda_joint2->SetPosition(0,msg->data[1]);
-        panda_joint3->SetPosition(0,msg->data[2]);
-        panda_joint4->SetPosition(0,msg->data[3]);
-        panda_joint5->SetPosition(0,msg->data[4]);
-        panda_joint6->SetPosition(0,msg->data[5]);
-        panda_joint7->SetPosition(0,msg->data[6]);
+        ur5_joint1->SetPosition(0,msg->data[0]);
+        ur5_joint2->SetPosition(0,msg->data[1]);
+        ur5_joint3->SetPosition(0,msg->data[2]);
+        ur5_joint4->SetPosition(0,msg->data[3]);
+        ur5_joint5->SetPosition(0,msg->data[4]);
+        ur5_joint6->SetPosition(0,msg->data[5]);
+
+        panda_joint1->SetPosition(0,msg->data[6]);
+        panda_joint2->SetPosition(0,msg->data[7]);
+        panda_joint3->SetPosition(0,msg->data[8]);
+        panda_joint4->SetPosition(0,msg->data[9]);
+        panda_joint5->SetPosition(0,msg->data[10]);
+        panda_joint6->SetPosition(0,msg->data[11]);
+        panda_joint7->SetPosition(0,msg->data[12]);
+        usleep(200000);
         auto message = sensor_msgs::msg::JointState();
         message.header.stamp = this->node_->get_clock() ->now();
-        message.name = {"panda_joint1","panda_joint2","panda_joint3","panda_joint4","panda_joint5","panda_joint6","panda_joint7"};
-        message.position = {msg->data[0],msg->data[1],msg->data[2],msg->data[3],msg->data[4],msg->data[5],msg->data[6]};
+        message.name = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint","wrist_1_joint", "wrist_2_joint", "wrist_3_joint","panda_joint1","panda_joint2","panda_joint3","panda_joint4","panda_joint5","panda_joint6","panda_joint7","panda_finger_joint1","panda_finger_joint2"};
+        message.position = {msg->data[0],msg->data[1],msg->data[2],msg->data[3],msg->data[4],msg->data[5],msg->data[6],msg->data[7],msg->data[8],msg->data[9],msg->data[10],msg->data[11],msg->data[12]};
         //Delay for image to catch up to joint position update
-        usleep(100000);
-        /*cv_bridge::CvImagePtr cv_ptr;
-        std::cout << "Made it here" << std::endl;
-        try
-        {
-            cv_ptr = cv_bridge::toCvCopy(this->rgb_msg_, this->rgb_msg_->encoding);
-            cv::imwrite("/home/benchturtle/pog.png",cv_ptr->image);
-            std::cout << "GOTEEEEEEM" << std::endl;
-        }
-        catch (cv_bridge::Exception& e)
-        {
-          std::cout << "Error with CV Bridge" << std::endl;
-        }
-        exit(0);*/
+        
         this->gazebo_joint_state_publisher_->publish(message);
+        std::cout << "Finished publish" << std::endl;
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+        std::cout << "Algorithm Part 2: " << duration.count() << " microseconds" << std::endl;
     }
 
 
@@ -111,6 +112,6 @@ namespace gazebo
   };
 
   // Tell Gazebo about this plugin, so that Gazebo can call Load on this plugin.
-  GZ_REGISTER_MODEL_PLUGIN(PandaControlPlugin)
+  GZ_REGISTER_MODEL_PLUGIN(Ur5PandaNoGripperControlPlugin)
 }
 #endif

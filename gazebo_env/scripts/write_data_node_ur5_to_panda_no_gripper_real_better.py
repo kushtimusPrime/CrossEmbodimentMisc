@@ -23,7 +23,7 @@ from sensor_msgs_py import point_cloud2
 import cv2
 from cv_bridge import CvBridge
 import time
-from input_filenames_msg.msg import InputFilesRobosuite, InputFilesRobosuiteData, InputFilesSimData
+from input_filenames_msg.msg import InputFilesRobosuite, InputFilesRobosuiteData, InputFilesRealData
 from sensor_msgs.msg import JointState
 from tracikpy import TracIKSolver
 from mdh.kinematic_chain import KinematicChain
@@ -32,6 +32,8 @@ import kinpy as kp
 from geometry_msgs.msg import Vector3, Quaternion
 from scipy.spatial.transform import Rotation as R
 from message_filters import ApproximateTimeSynchronizer, Subscriber
+import pathlib
+
 
 class WriteData(Node):
     def __init__(self):
@@ -39,11 +41,12 @@ class WriteData(Node):
         self.is_ready_ = False
         self.thetas_ = None
         self.debug_ = False
-        self.panda_urdf_ = "/home/lawrence/cross_embodiment_ws/src/gazebo_env/description/urdf/panda_ik_robosuite.urdf"        
-        self.panda_solver_ = TracIKSolver(self.panda_urdf_,"world","panda_ee")
-        self.ur5e_urdf_ = "/home/lawrence/cross_embodiment_ws/src/gazebo_env/description/urdf/ur5e_ik_robosuite.urdf"
+        file_directory = pathlib.Path(__file__).parent.resolve()
+        self.panda_urdf_ = os.path.join(file_directory,'../../../../src/gazebo_env/description/urdf/panda_ur5_gripper_ik_real.urdf')        
+        self.panda_solver_ = TracIKSolver(self.panda_urdf_,"panda_link0","panda_link8")
+        self.ur5_urdf_ = os.path.join(file_directory,'../../../../src/gazebo_env/description/urdf/ur5_ik_real.urdf')
         self.chain_ = kp.build_chain_from_urdf(open(self.panda_urdf_).read())
-        self.ur5e_solver_ = TracIKSolver(self.ur5e_urdf_,"world","ur5e_ee_link")
+        self.ur5_solver_ = TracIKSolver(self.ur5_urdf_,"base_link","wrist_3_link")
 
         # real_camera_link to world and then multiply translation by 1000
         # self.camera_to_world_ = np.array([[0,1,0,0],
@@ -58,15 +61,17 @@ class WriteData(Node):
         self.robosuite_intrinsic_matrix_ = np.array([[101.39696962,   0.        , 42.        ],
        [  0.        , 101.39696962, 42.        ],
        [  0.        ,   0.        ,   1.        ]])
-        self.panda_joint_command_publisher_ = self.create_publisher(Float64MultiArray,'/joint_commands',1)
+        self.ur5_and_panda_joint_command_publisher_ = self.create_publisher(Float64MultiArray,'/joint_commands',1)
         self.panda_joint_state_publisher_ = self.create_publisher(
             JointState,
             '/joint_states',  # Topic name for /joint_states
             1)
         self.joint_state_subscriber_ = Subscriber(self,JointState,'/gazebo_joint_states')
-        self.gazebo_rgb_image_subscriber_ = Subscriber(self,Image,'/depth_camera/image_raw')
-        self.gazebo_depth_image_subscriber_ = Subscriber(self,Image,'/depth_camera/depth/image_raw')
-        self.gazebo_time_synchronizer_ = ApproximateTimeSynchronizer([self.joint_state_subscriber_,self.gazebo_rgb_image_subscriber_,self.gazebo_depth_image_subscriber_],1,1)
+        self.ur5_rgb_image_subscriber_ = Subscriber(self,Image,'/ur5_camera/image_raw')
+        self.ur5_depth_image_subscriber_ = Subscriber(self,Image,'/ur5_camera/depth/image_raw')
+        self.panda_rgb_image_subscriber_ = Subscriber(self,Image,'/panda_camera/image_raw')
+        self.panda_depth_image_subscriber_ = Subscriber(self,Image,'/panda_camera/depth/image_raw')
+        self.gazebo_time_synchronizer_ = ApproximateTimeSynchronizer([self.joint_state_subscriber_,self.ur5_rgb_image_subscriber_,self.ur5_depth_image_subscriber_,self.panda_rgb_image_subscriber_,self.panda_depth_image_subscriber_],1,0.1)
         self.gazebo_time_synchronizer_.registerCallback(self.gazeboCallback)
         self.subscription_ = self.create_subscription(
             InputFilesRobosuite,
@@ -74,14 +79,14 @@ class WriteData(Node):
             self.listenerCallback,
             1)
         self.subscription_data_ = self.create_subscription(
-            InputFilesSimData,
-            'input_files_data_sim',
+            InputFilesRealData,
+            'input_files_data_real',
             self.listenerCallbackOnlineDebug,
             1)
         self.joint_state_msg = JointState()
 
         #Harcoding start position
-        self.q_init_ = np.array([-0.04536656 , 0.22302045, -0.01685448, -2.57859539,  0.02532237 , 2.93147512,0.83630218])
+        self.q_init_ = np.array([-0.56332457,  0.06948572,  0.5227356,  -2.26363611, -0.11123186,  2.28321218, -0.09410787])
         
         self.urdf_xacro_path_ = os.path.join(FindPackageShare(package="gazebo_env").find("gazebo_env"),"urdf","panda_arm_hand_only.urdf.xacro")
         xacro_command = "ros2 run xacro xacro " + self.urdf_xacro_path_
@@ -103,10 +108,10 @@ class WriteData(Node):
         self.publishers_ = []
         self.subscribers_ = []
         self.timers_ = []
-        self.robosuite_rgb_ = None
-        self.robosuite_depth_ = None
-        self.robosuite_seg_ = None
-        self.robosuite_qout_list_ = None
+        self.real_rgb_ = None
+        self.real_depth_ = None
+        self.real_seg_ = None
+        self.real_qout_list_ = None
         self.i_ = -1
         self.offline_ = False
         self.seg_file_ = None
@@ -126,6 +131,45 @@ class WriteData(Node):
             Image,
             '/camera/image_raw',
             self.cameraCallback,
+            1
+        )
+
+        self.ur5_rgb_ = None
+        self.ur5_depth_ = None
+        self.panda_rgb_ = None
+        self.panda_depth_ = None
+        self.ur5_camera_color_subscription_ = self.create_subscription(
+            Image,
+            '/ur5_camera/image_raw',
+            self.ur5RgbCallback,
+            1
+        )
+
+        self.ur5_camera_depth_subscription_ = self.create_subscription(
+            Image,
+            '/ur5_camera/depth/image_raw',
+            self.ur5DepthCallback,
+            1
+        )
+
+        self.panda_camera_color_subscription_ = self.create_subscription(
+            Image,
+            '/panda_camera/image_raw',
+            self.pandaRgbCallback,
+            1
+        )
+
+        self.panda_camera_depth_subscription_ = self.create_subscription(
+            Image,
+            '/panda_camera/depth/image_raw',
+            self.pandaDepthCallback,
+            1
+        )
+
+        self.joint_subscription_ = self.create_subscription(
+            JointState,
+            '/gazebo_joint_states',
+            self.noTimeGazeboCallback,
             1
         )
         self.cv_bridge_ = CvBridge()
@@ -168,22 +212,48 @@ class WriteData(Node):
         self.updated_joints_ = False
         self.is_ready_ = True
     
-    def gazeboCallback(self,joints,gazebo_rgb,gazebo_depth):
-        joint_command_np = np.array(self.robosuite_qout_list_)
-        gazebo_joints_np = np.array(joints.position)
+    def ur5RgbCallback(self,msg):
+        self.ur5_rgb_ = msg
+    
+    def ur5DepthCallback(self,msg):
+        self.ur5_depth_ = msg
+
+    def pandaRgbCallback(self,msg):
+        self.panda_rgb_ = msg
+    
+    def pandaDepthCallback(self,msg):
+        self.panda_depth_ = msg
+
+    def noTimeGazeboCallback(self,joint_msg):
+        return
+
+    def gazeboCallback(self,joints,real_rgb,real_depth,gazebo_rgb,gazebo_depth,):
+        
         start_time = time.time()
+        real_rgb_np = self.cv_bridge_.imgmsg_to_cv2(real_rgb)
+        real_depth_np = self.cv_bridge_.imgmsg_to_cv2(real_depth)
         gazebo_rgb_np = self.cv_bridge_.imgmsg_to_cv2(gazebo_rgb)
+        
         gazebo_depth_np = self.cv_bridge_.imgmsg_to_cv2(gazebo_depth)
+        cv2.imwrite('real_rgb.png',real_rgb_np)
+        cv2.imwrite('real_depth.png',self.normalize_depth_image(real_depth_np))
+        cv2.imwrite('gazebo_rgb.png',gazebo_rgb_np)
+        cv2.imwrite('gazebo_depth.png',self.normalize_depth_image(gazebo_depth_np))
+        
+        real_seg_np = (real_depth_np < 8).astype(np.uint8)
+        real_seg_255_np = 255 * real_seg_np
         gazebo_seg_np = (gazebo_depth_np < 8).astype(np.uint8)
         gazebo_seg_255_np = 255 * gazebo_seg_np
-        robosuite_rgb = self.robosuite_rgb_
-        robosuite_depth = self.robosuite_depth_ 
-        robosuite_seg = self.robosuite_seg_
-        
-        self.inpainting(robosuite_rgb,robosuite_depth,robosuite_seg,gazebo_rgb_np,gazebo_seg_255_np,gazebo_depth_np)
+        cv2.imwrite('real_seg.png',real_seg_255_np)
+        cv2.imwrite('gazebo_seg.png',gazebo_seg_255_np)
+        real_rgb = self.real_rgb_
+        real_depth = self.real_depth_
+        real_seg = real_seg_255_np
+        gazebo_rgb_np = cv2.cvtColor(gazebo_rgb_np,cv2.COLOR_BGR2RGB)
+        self.inpainting(real_rgb,real_depth,real_seg,gazebo_rgb_np,gazebo_seg_255_np,gazebo_depth_np)
         self.updated_joints_ = False
         end_time = time.time()
-        print("Algo time: " + str(end_time - start_time) + " seconds")
+        print("Algo time Part 3: " + str(end_time - start_time) + " seconds")
         return
         #if(np.linalg.norm(joint_command_np - gazebo_joints_np,2) < 0.01):
             
@@ -377,7 +447,7 @@ class WriteData(Node):
         return depth_image
 
     def inpainting(self,rgb,depth,seg_file,gazebo_rgb,gazebo_seg,gazebo_depth):
-        # TODO(kush): Clean this up to use actual data, not file names
+        
         if type(rgb) == str:
             rgb_np = cv2.imread(rgb)
             seg = cv2.imread(seg_file,0)
@@ -386,50 +456,54 @@ class WriteData(Node):
         else:
             rgb_np = self.cv_bridge_.imgmsg_to_cv2(rgb)
             # rgb_np = np.array(msg.rgb,dtype=np.uint8).reshape((msg.segmentation.width,msg.segmentation.height,3))
-            depth_np = np.array(depth,dtype=np.float64).reshape((rgb.width,rgb.height))
-            seg_color = np.array(seg_file,dtype=np.uint8).reshape((rgb.width,rgb.height,3)) #self.cv_bridge_.imgmsg_to_cv2(msg.segmentation)
-            seg = cv2.cvtColor(seg_color,cv2.COLOR_BGR2GRAY)
-
+            depth_np = depth
+            seg = seg_file
         _, seg = cv2.threshold(seg, 128, 255, cv2.THRESH_BINARY)
-        robosuite_depth_image_unmasked = depth_np
-        robosuite_rgb_image_unmasked = rgb_np
-        robosuite_segmentation_mask_255 = seg
+        rgb_np = cv2.resize(rgb_np,(128,128))
+        depth_np = cv2.resize(depth_np,(128,128))
+        seg = cv2.resize(seg,(128,128))
+        gazebo_rgb = cv2.resize(gazebo_rgb,(128,128))
+        gazebo_seg = cv2.resize(gazebo_seg,(128,128))
+        gazebo_depth = cv2.resize(gazebo_depth,(128,128))
+        real_depth_image_unmasked = depth_np
+        real_rgb_image_unmasked = rgb_np
+        real_segmentation_mask_255 = seg
         gazebo_robot_only_rgb = gazebo_rgb
         gazebo_segmentation_mask_255 = gazebo_seg
         gazebo_robot_only_depth = gazebo_depth
-        robosuite_rgbd_image_unmasked = np.concatenate((robosuite_rgb_image_unmasked,robosuite_depth_image_unmasked[:,:,np.newaxis]),axis=2)
-        inverted_robosuite_segmentation_mask_255 = cv2.bitwise_not(robosuite_segmentation_mask_255)
-        robosuite_rgbd_image_masked = cv2.bitwise_and(robosuite_rgbd_image_unmasked,robosuite_rgbd_image_unmasked,mask=inverted_robosuite_segmentation_mask_255)
-        robosuite_rgb_image_masked = robosuite_rgbd_image_masked[:,:,0:3].astype(np.uint8)
-        robosuite_depth_image_masked = robosuite_rgbd_image_masked[:,:,-1]
-        joined_depth = np.concatenate((gazebo_robot_only_depth[np.newaxis],robosuite_depth_image_masked[np.newaxis]),axis=0)
+        real_rgbd_image_unmasked = np.concatenate((real_rgb_image_unmasked,real_depth_image_unmasked[:,:,np.newaxis]),axis=2)
+        inverted_segmentation_mask_255_original = cv2.bitwise_not(real_segmentation_mask_255)
+        inverted_real_segmentation_mask_255 = cv2.erode(inverted_segmentation_mask_255_original,np.ones((3,3),np.uint8),iterations=10)
+        cv2.imwrite('inverted_real_segmentation_mask_255.png',inverted_real_segmentation_mask_255)
+        outline_mask = abs(inverted_real_segmentation_mask_255 - inverted_segmentation_mask_255_original)*255
+        real_rgbd_image_masked = cv2.bitwise_and(real_rgbd_image_unmasked,real_rgbd_image_unmasked,mask=inverted_real_segmentation_mask_255)
+        real_rgb_image_masked = real_rgbd_image_masked[:,:,0:3].astype(np.uint8)
+        
+        real_rgb_image_masked = cv2.inpaint(real_rgb_image_masked,outline_mask,3,cv2.INPAINT_TELEA)
+        real_depth_image_masked = real_rgbd_image_masked[:,:,-1]
+        joined_depth = np.concatenate((gazebo_robot_only_depth[np.newaxis],real_depth_image_masked[np.newaxis]),axis=0)
         joined_depth[0,:,:][joined_depth[0,:,:] == 0] = 1000
         joined_depth[1,:,:][joined_depth[1,:,:] == 0] = 5
         joined_depth_argmin = np.argmin(joined_depth,axis=0)
         
-        robosuite_rgb_image_masked_inpaint = cv2.inpaint(robosuite_rgb_image_masked,robosuite_segmentation_mask_255,inpaintRadius=3,flags=cv2.INPAINT_TELEA)
-        attempt = robosuite_rgb_image_masked_inpaint * joined_depth_argmin[:,:,np.newaxis]
+        real_rgb_image_masked_inpaint = real_rgb_image_masked
+        
+        
+        attempt = real_rgb_image_masked_inpaint * joined_depth_argmin[:,:,np.newaxis]
         inverted_joined_depth_argmin = 1 - joined_depth_argmin
         gazebo_robot_only_lab = cv2.cvtColor(gazebo_robot_only_rgb,cv2.COLOR_BGR2LAB)
-        gazebo_robot_only_lab[:,:,0] += 50
+        gazebo_robot_only_lab[:,:,0] += 20
         gazebo_robot_only_mod = cv2.cvtColor(gazebo_robot_only_lab,cv2.COLOR_LAB2BGR)
         gazebo_robot_only_rgb = gazebo_robot_only_mod
         attempt2 = gazebo_robot_only_rgb * inverted_joined_depth_argmin[:,:,np.newaxis]
-        inpainted_image = attempt + attempt2
-        image_8bit = cv2.convertScaleAbs(inpainted_image)  # Convert to 8-bit image
-        if self.offline_:
-            if not os.path.exists(self.seg_file_[:self.seg_file_.rfind('/', 0, self.seg_file_.rfind('/')) + 1] + 'results'):
-                os.makedirs(self.seg_file_[:self.seg_file_.rfind('/', 0, self.seg_file_.rfind('/')) + 1] + 'results')
-
-            last_slash_index = self.seg_file_.rfind('/')
-            underscore_before_last_slash_index = self.seg_file_.rfind('_', 0, last_slash_index)
-            str_num = self.seg_file_[underscore_before_last_slash_index + 1:last_slash_index]
-            inpaint_file = self.seg_file_[:self.seg_file_.rfind('/', 0, self.seg_file_.rfind('/')) + 1] + 'results/inpaint' + str_num +'.png'
-            mask_file = self.seg_file_[:self.seg_file_.rfind('/', 0, self.seg_file_.rfind('/')) + 1] + 'results/mask' + str_num +'.png'
-            attempt_file = self.seg_file_[:self.seg_file_.rfind('/', 0, self.seg_file_.rfind('/')) + 1] + 'results/attempt' + str_num +'.png'
-            cv2.imwrite(inpaint_file,image_8bit)
-            cv2.imwrite(mask_file,gazebo_segmentation_mask_255)
-            cv2.imwrite(attempt_file,attempt)
+        
+        inpainted_image = cv2.add(attempt,attempt2)#attempt + attempt2
+        
+        better_blend_mask = joined_depth_argmin * real_segmentation_mask_255
+        
+        image_8bit = cv2.inpaint(inpainted_image.astype(np.uint8),better_blend_mask.astype(np.uint8),3,cv2.INPAINT_TELEA)
+        
+        cv2.imwrite('inpaint.png',image_8bit)
 
         inpainted_image_msg = self.cv_bridge_.cv2_to_imgmsg(image_8bit,encoding="bgr8")
         mask_image_msg = self.cv_bridge_.cv2_to_imgmsg(gazebo_segmentation_mask_255,encoding="mono8")
@@ -441,16 +515,16 @@ class WriteData(Node):
         return
 
         transformed_gazebo_rgb,transformed_gazebo_depth = self.transformGazeboImage(gazebo_robot_only_rgb,gazebo_segmentation_mask_255,pointcloud_msg)
-        robosuite_rgbd_image_unmasked = np.concatenate((robosuite_rgb_image_unmasked,robosuite_depth_image_unmasked[:,:,np.newaxis]),axis=2)
-        inverted_robosuite_segmentation_mask_255 = cv2.bitwise_not(robosuite_segmentation_mask_255)
-        robosuite_rgbd_image_masked = cv2.bitwise_and(robosuite_rgbd_image_unmasked,robosuite_rgbd_image_unmasked,mask=inverted_robosuite_segmentation_mask_255)
-        robosuite_rgb_image_masked = robosuite_rgbd_image_masked[:,:,0:3].astype(np.uint8)
-        robosuite_depth_image_masked = robosuite_rgbd_image_masked[:,:,-1]
-        joined_depth = np.concatenate((transformed_gazebo_depth[np.newaxis],robosuite_depth_image_masked[np.newaxis]),axis=0)
+        real_rgbd_image_unmasked = np.concatenate((real_rgb_image_unmasked,real_depth_image_unmasked[:,:,np.newaxis]),axis=2)
+        inverted_real_segmentation_mask_255 = cv2.bitwise_not(real_segmentation_mask_255)
+        real_rgbd_image_masked = cv2.bitwise_and(real_rgbd_image_unmasked,real_rgbd_image_unmasked,mask=inverted_real_segmentation_mask_255)
+        real_rgb_image_masked = real_rgbd_image_masked[:,:,0:3].astype(np.uint8)
+        real_depth_image_masked = real_rgbd_image_masked[:,:,-1]
+        joined_depth = np.concatenate((transformed_gazebo_depth[np.newaxis],real_depth_image_masked[np.newaxis]),axis=0)
         joined_depth[joined_depth == 0] = 1000
         joined_depth_argmin = np.argmin(joined_depth,axis=0)
-        robosuite_rgb_image_masked_inpaint = cv2.inpaint(robosuite_rgb_image_masked,robosuite_segmentation_mask_255,inpaintRadius=3,flags=cv2.INPAINT_TELEA)
-        attempt = robosuite_rgb_image_masked_inpaint * joined_depth_argmin[:,:,np.newaxis]
+        real_rgb_image_masked_inpaint = cv2.inpaint(real_rgb_image_masked,real_segmentation_mask_255,inpaintRadius=3,flags=cv2.INPAINT_TELEA)
+        attempt = real_rgb_image_masked_inpaint * joined_depth_argmin[:,:,np.newaxis]
         inverted_joined_depth_argmin = 1 - joined_depth_argmin
         attempt2 = transformed_gazebo_rgb * inverted_joined_depth_argmin[:,:,np.newaxis]
         inpainted_image = attempt + attempt2
@@ -762,6 +836,19 @@ class WriteData(Node):
             R = np.matmul(R,Rx)
             return R
         
+    def replace_nan_with_neighbors_average(self,array):
+        def replace_function(subarray):
+            center = subarray[4]
+            if(center != np.nan):
+                return center
+            valid_values = subarray[subarray != -np.inf]
+            if valid_values.size == 0:
+                return np.nan
+            else:
+                return np.nanmean(valid_values)
+
+        return generic_filter(array, replace_function, size=(3, 3), mode='constant', cval=np.nan)
+        
     def listenerCallback(self,msg):
         if self.is_ready_:
             self.offline_ = True
@@ -818,12 +905,13 @@ class WriteData(Node):
             qout_list.append(panda_gripper_command)
             qout_msg = Float64MultiArray()
             qout_msg.data = qout_list
-            self.panda_joint_command_publisher_.publish(qout_msg)
+            self.ur5_and_panda_joint_command_publisher_.publish(qout_msg)
             self.joint_commands_callback(qout_msg)
             self.setupMeshes(rgb,depth,segmentation)
             end_time = time.time()
 
     def listenerCallbackOnlineDebug(self,msg):
+        start_time = time.time()
         self.i_ += 1
         online_input_folder = 'offline_ur5e_input'
         if not os.path.exists(online_input_folder):
@@ -835,16 +923,17 @@ class WriteData(Node):
         rgb_np = self.cv_bridge_.imgmsg_to_cv2(msg.rgb)
         # rgb_np = np.array(msg.rgb,dtype=np.uint8).reshape((msg.segmentation.width,msg.segmentation.height,3))
         cv2.imwrite(online_input_num_folder+'/rgb.png',rgb_np)
-        depth_np = np.array(msg.depth_map,dtype=np.float64).reshape((msg.rgb.width,msg.rgb.height))
+        depth_np = np.array(msg.depth_map,dtype=np.float64).reshape((msg.rgb.height,msg.rgb.width))
         np.save(online_input_num_folder+'/depth.npy',depth_np)
-        seg_color = np.array(msg.segmentation,dtype=np.uint8).reshape((msg.rgb.width,msg.rgb.height,3)) #self.cv_bridge_.imgmsg_to_cv2(msg.segmentation)
-        seg = cv2.cvtColor(seg_color,cv2.COLOR_BGR2GRAY)
-        cv2.imwrite(online_input_num_folder+'/seg.png',seg)
-        np.save(online_input_num_folder+'/ee_pose.npy',np.array(msg.ee_pose))
-        rgb = msg.rgb
-        depth = msg.depth_map
-        segmentation = msg.segmentation
-        ee_pose = np.array(msg.ee_pose).reshape((4,4))
+        cv2.imwrite('inf_mask.png',np.isinf(depth_np).astype(np.uint8)*255)
+        cv2.imwrite('nan_mask.png',np.isnan(depth_np).astype(np.uint8)*255)
+        depth_np[np.isinf(depth_np) & (depth_np < 0)] = 0.01
+        depth_np[np.isinf(depth_np) & (depth_np > 0)] = 10
+        depth_np[np.isnan(depth_np)] = 0
+        cv2.imwrite('og_depth.png',self.normalize_depth_image(depth_np))
+        ur5_joints = np.array(msg.joints)
+        ur5_joints[0] += math.pi
+        ee_pose = self.ur5_solver_.fk(ur5_joints)
         end_effector_rotation_with_no_translation = np.array([[0,-1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]])
         ee_pose = ee_pose @ end_effector_rotation_with_no_translation
         scipy_rotation = R.from_matrix(ee_pose[:3,:3])
@@ -855,26 +944,26 @@ class WriteData(Node):
         while(qout is None):
             b_xyz *= 10
             b_rpy *= 10
-            qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_,bx=b_xyz,by=b_xyz,bz=b_xyz,brx=b_rpy,bry=b_rpy,brz=b_rpy)
+            qout = self.ur5_solver_.ik(ee_pose,qinit=self.q_init_,bx=b_xyz,by=b_xyz,bz=b_xyz,brx=b_rpy,bry=b_rpy,brz=b_rpy)
             if(b_xyz == 0.01):
                 print("Couldn't find good IK")
                 qout = self.q_init_
         print("Bound xyz: " + str(b_xyz))
+        #qout[0] -= math.pi
         self.q_init_ = qout
         # Hardcoded gripper
         qout_list = qout.tolist()
-        
-        panda_gripper_command = msg.interpolated_gripper
-        #panda_gripper_command = -0.05702400673569841 * gripper +  0.02670973458948458
-        qout_list.append(panda_gripper_command[0])
+        ur5_joints = ur5_joints.tolist()
+        ur5_joints.extend(qout_list)
+        qout_list = ur5_joints
         qout_msg = Float64MultiArray()
         qout_msg.data = qout_list
-        self.panda_joint_command_publisher_.publish(qout_msg)
-        self.joint_commands_callback(qout_msg)
-        self.robosuite_rgb_ = msg.rgb
-        self.robosuite_depth_ = msg.depth_map
-        self.robosuite_seg_ = msg.segmentation
-        self.robosuite_qout_list_ = qout_list
+        self.ur5_and_panda_joint_command_publisher_.publish(qout_msg)
+        self.real_rgb_ = msg.rgb
+        self.real_depth_ = depth_np
+        self.real_qout_list_ = qout_list
+        end_time = time.time()
+        print("Algo time Part 1: " + str(end_time - start_time) + " seconds")
         # else:
         #     qout = self.panda_solver_.ik(ee_pose,qinit=self.q_init_,bx=1e-3,by=1e-3,bz=1e-3)
         #     print("WARNING HIT IK ON FRANKA ERROR")
@@ -912,7 +1001,7 @@ class WriteData(Node):
             qout_list.append(panda_gripper_command)
             qout_msg = Float64MultiArray()
             qout_msg.data = qout_list
-            self.panda_joint_command_publisher_.publish(qout_msg)
+            self.ur5_and_panda_joint_command_publisher_.publish(qout_msg)
             self.joint_commands_callback(qout_msg)
             self.setupMeshes(rgb, depth_map, segmentation_data)
             # end_time = time.time()
