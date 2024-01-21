@@ -29,10 +29,6 @@ namespace gazebo
       // Just output a message for now
       std::cerr << "NO PHYSICS" << "\n";
       _model->GetWorld()->SetPhysicsEnabled(false);
-      std::cout << "Lights" << std::endl;
-      std::cout << _model->GetWorld()->LightCount() << std::endl;
-      auto light_ptr = _model -> GetWorld()->LightByName("sun");
-      std::cout << "Name: " << light_ptr ->GetName() << std::endl;
       //light_ptr -> Fini();
     }
 

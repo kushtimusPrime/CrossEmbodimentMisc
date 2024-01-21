@@ -251,7 +251,7 @@ class WriteData(Node):
         real_seg = real_seg_255_np
         gazebo_rgb_np = cv2.cvtColor(gazebo_rgb_np,cv2.COLOR_BGR2RGB)
         self.dummyInpainting(real_rgb,real_seg,gazebo_rgb_np,gazebo_seg_255_np)
-        self.inpainting(real_rgb,real_depth,real_seg,gazebo_rgb_np,gazebo_seg_255_np,gazebo_depth_np)
+        #self.inpainting(real_rgb,real_depth,real_seg,gazebo_rgb_np,gazebo_seg_255_np,gazebo_depth_np)
         self.updated_joints_ = False
         end_time = time.time()
         print("Algo time Part 3: " + str(end_time - start_time) + " seconds")
@@ -491,10 +491,10 @@ class WriteData(Node):
         outline_mask = abs(inverted_segmentation_mask_255 - inverted_segmentation_mask_255_original)*255
         gazebo_only = cv2.bitwise_and(gazebo_rgb,gazebo_rgb,mask=gazebo_segmentation_mask_255)
         # gazebo_only = cv2.cvtColor(gazebo_only,cv2.COLOR_BGR2RGB)
-        gazebo_robot_only_lab = cv2.cvtColor(gazebo_only,cv2.COLOR_BGR2LAB)
+        #gazebo_robot_only_lab = cv2.cvtColor(gazebo_only,cv2.COLOR_BGR2LAB)
         #gazebo_robot_only_lab[:,:,0] += 10
-        gazebo_robot_only_lab[:,:,0] = np.where(gazebo_segmentation_mask_255 > 0, gazebo_robot_only_lab[:,:,0] + 150, gazebo_robot_only_lab[:,:,0])
-        gazebo_only = cv2.cvtColor(gazebo_robot_only_lab,cv2.COLOR_LAB2BGR)
+        #gazebo_robot_only_lab[:,:,0] = np.where(gazebo_segmentation_mask_255 > 0, gazebo_robot_only_lab[:,:,0] + 150, gazebo_robot_only_lab[:,:,0])
+        #gazebo_only = cv2.cvtColor(gazebo_robot_only_lab,cv2.COLOR_LAB2BGR)
         cv2.imwrite('gazebo_robot_only.png',gazebo_only)
         background_only = cv2.bitwise_and(rgb,rgb,mask=inverted_segmentation_mask_255_original)
         inverted_seg_file_original = cv2.bitwise_not(seg_file)
@@ -1050,19 +1050,26 @@ class WriteData(Node):
                 print("Couldn't find good IK")
                 qout = self.q_init_
         print("Bound xyz: " + str(b_xyz))
-        #qout[0] -= math.pi
         self.q_init_ = qout
-        # Hardcoded gripper
-        qout_list = qout.tolist()
-        ur5_joints = ur5_joints.tolist()
-        ur5_joints.extend(qout_list)
-        qout_list = ur5_joints
+        ur5_arm_joints = ur5_joints.tolist()
+        ur5_gripper_joint = 0.0
+        ur5_gripper_joints = [ur5_gripper_joint] * 6
+        panda_arm_joints = qout.tolist()
+        panda_gripper_joint = 0.04
+        panda_gripper_joints = [panda_gripper_joint] * 2
+        full_joint_list = []
+        
+        full_joint_list.extend(ur5_arm_joints)
+        full_joint_list.extend(ur5_gripper_joints)
+        full_joint_list.extend(panda_arm_joints)
+        full_joint_list.extend(panda_gripper_joints)
+
         qout_msg = Float64MultiArray()
-        qout_msg.data = qout_list
+        qout_msg.data = full_joint_list
         self.ur5_and_panda_joint_command_publisher_.publish(qout_msg)
         self.real_rgb_ = msg.rgb
         self.real_depth_ = depth_np
-        self.real_qout_list_ = qout_list
+        self.real_qout_list_ = full_joint_list
         end_time = time.time()
         print("Algo time Part 1: " + str(end_time - start_time) + " seconds")
         # else:

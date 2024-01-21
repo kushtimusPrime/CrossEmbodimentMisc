@@ -16,30 +16,17 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, FindExecutable, PathJoinSubstitution, LaunchConfiguration
+from launch.substitutions import (
+    Command,
+    FindExecutable,
+    PathJoinSubstitution,
+    LaunchConfiguration,
+)
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-import os
+
 
 def generate_launch_description():
-
-    # Set the path to the Gazebo ROS package
-    pkg_gazebo_ros = FindPackageShare(package='gazebo_ros').find('gazebo_ros')   
-    
-    # Set the path to this package.
-    pkg_share = FindPackageShare(package='gazebo_env').find('gazebo_env')
-    
-    # Set the path to the world file
-    world_file_name = 'no_shadow.world'
-    world_path = os.path.join(pkg_share, 'worlds', world_file_name)
-
-    world = LaunchConfiguration('world')
- 
-    declare_world_cmd = DeclareLaunchArgument(
-        name='world',
-        default_value=world_path,
-        description='Full path to the world model file to load')
-
     # Declare arguments
     declared_arguments = []
     declared_arguments.append(
@@ -50,24 +37,25 @@ def generate_launch_description():
         )
     )
 
-    declared_arguments.append(declare_world_cmd)
-
     # Initialize Arguments
     gui = LaunchConfiguration("gui")
 
     gazebo_server = IncludeLaunchDescription(
-    PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')),
-    launch_arguments={'world': world}.items())
-
-    #gazebo_server = IncludeLaunchDescription(
-    #    PythonLaunchDescriptionSource(
-    #        [PathJoinSubstitution([FindPackageShare("gazebo_ros"), "launch", "gzserver.launch.py"])],
-    #        launch_arguments={"world": world}.items(),
-    #    )
-    #)
+        PythonLaunchDescriptionSource(
+            [
+                PathJoinSubstitution(
+                    [FindPackageShare("gazebo_ros"), "launch", "gzserver.launch.py"]
+                )
+            ]
+        )
+    )
     gazebo_client = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [PathJoinSubstitution([FindPackageShare("gazebo_ros"), "launch", "gzclient.launch.py"])]
+            [
+                PathJoinSubstitution(
+                    [FindPackageShare("gazebo_ros"), "launch", "gzclient.launch.py"]
+                )
+            ]
         )
     )
 
@@ -77,7 +65,11 @@ def generate_launch_description():
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             PathJoinSubstitution(
-               [FindPackageShare("gazebo_env"), "urdf", "ur5_and_panda_no_gripper_camera_scene_real.urdf.xacro"]
+                [
+                    FindPackageShare("gazebo_env"),
+                    "urdf",
+                    "panda_arm_hand_camera_scene_robosuite_lift_square_stack_three_threading.urdf.xacro",
+                ]
             ),
             " ",
             "use_gazebo_classic:=true",
@@ -107,25 +99,31 @@ def generate_launch_description():
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
+        arguments=[
+            "joint_state_broadcaster",
+            "--controller-manager",
+            "/controller_manager",
+        ],
     )
 
     joint_state_publisher_node = Node(
         package="gazebo_env",
-        executable="full_ur5_and_panda_no_gripper_joint_state_publisher_node.py",
-        output="screen"
+        executable="full_panda_joint_state_publisher_node.py",
+        output="screen",
     )
 
     image_sub_node = Node(
-        package="gazebo_env",
-        executable="gazebo_image_test.py",
-        output="screen"
+        package="gazebo_env", executable="gazebo_image_test.py", output="screen"
     )
 
     robot_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["forward_position_controller", "--controller-manager", "/controller_manager"],
+        arguments=[
+            "forward_position_controller",
+            "--controller-manager",
+            "/controller_manager",
+        ],
     )
 
     nodes = [
@@ -144,8 +142,8 @@ def generate_launch_description():
                 "-1.571",
                 "0.0",  # .33
                 "-1.571",
-                "ur5_camera_link",
-                "ur5_real_camera_link",
+                "camera_link",
+                "real_camera_link",
                 # "0.35", ##original .50
                 # "-0.15", # -.05
                 # "0.0", # changed to .55 from .45
@@ -156,31 +154,9 @@ def generate_launch_description():
                 # "camera_link",
             ],
         ),
-        Node(
-            package="tf2_ros",
-            executable="static_transform_publisher",
-            arguments=[
-                "0.0",
-                "0.0",
-                "0.0",  # 0.68
-                "-1.571",
-                "0.0",  # .33
-                "-1.571",
-                "panda_camera_link",
-                "panda_real_camera_link",
-                # "0.35", ##original .50
-                # "-0.15", # -.05
-                # "0.0", # changed to .55 from .45
-                # "0",
-                # "0", #original 0
-                # "0.0",#1.57
-                # "base_link",
-                # "camera_link",
-            ],
-        ),
-        #image_sub_node
-        #joint_state_broadcaster_spawner,
-        #robot_controller_spawner,
+        # image_sub_node
+        # joint_state_broadcaster_spawner,
+        # robot_controller_spawner,
     ]
 
     return LaunchDescription(declared_arguments + nodes)

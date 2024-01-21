@@ -80,6 +80,18 @@ ament_target_dependencies(ur5_and_panda_no_gripper_control_plugin
 )
 target_link_libraries(ur5_and_panda_no_gripper_control_plugin ${GAZEBO_LIBRARIES} ${OpenCV_LIBS})
 
+add_library(ur5_and_panda_gripper_control_plugin SHARED ur5_and_panda_gripper_control_plugin/ur5_and_panda_gripper_control_plugin.cc)
+ament_target_dependencies(ur5_and_panda_gripper_control_plugin
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "message_filters"
+  "cv_bridge"
+)
+target_link_libraries(ur5_and_panda_gripper_control_plugin ${GAZEBO_LIBRARIES} ${OpenCV_LIBS})
+
 add_library(panda_control_ur5e_gripper_real_plugin SHARED panda_control_ur5e_gripper_real_plugin/panda_control_ur5e_gripper_real_plugin.cc)
 ament_target_dependencies(panda_control_ur5e_gripper_real_plugin
   "gazebo_dev"
@@ -137,6 +149,12 @@ install(
   DIRECTORY meshes
   DESTINATION share/gazebo_env
 )
+
+install(
+  DIRECTORY worlds
+  DESTINATION share/gazebo_env
+)
+
 install(
   DIRECTORY description/urdf
   DESTINATION share/gazebo_env
@@ -186,7 +204,17 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  scripts/write_data_node_ur5_to_panda_gripper_real_better.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
   scripts/read_data_node_robosuite.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/reproject_test_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -199,6 +227,12 @@ install(PROGRAMS
   scripts/full_ur5_and_panda_no_gripper_joint_state_publisher_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
+
+install(PROGRAMS
+  scripts/full_ur5_and_panda_gripper_joint_state_publisher_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 install(PROGRAMS
   scripts/read_data_node_robosuite_better.py

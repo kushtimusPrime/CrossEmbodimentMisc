@@ -77,7 +77,7 @@ def generate_launch_description():
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             PathJoinSubstitution(
-               [FindPackageShare("gazebo_env"), "urdf", "ur5_and_panda_no_gripper_camera_scene_real.urdf.xacro"]
+               [FindPackageShare("gazebo_env"), "urdf", "ur5_and_panda_gripper_camera_scene_real.urdf.xacro"]
             ),
             " ",
             "use_gazebo_classic:=true",
@@ -112,7 +112,7 @@ def generate_launch_description():
 
     joint_state_publisher_node = Node(
         package="gazebo_env",
-        executable="full_ur5_and_panda_no_gripper_joint_state_publisher_node.py",
+        executable="full_ur5_and_panda_gripper_joint_state_publisher_node.py",
         output="screen"
     )
 

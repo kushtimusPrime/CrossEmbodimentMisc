@@ -32,6 +32,7 @@ class ReadData(Node):
         self.franka_info_folder_ = '/home/lawrence/cross_embodiment_ws/src/gazebo_env/ur5_check'
         self.check_npy_file_ = "/home/lawrence/cross_embodiment_ws/src/gazebo_env/ur5_check/check_ur5.npy"
         self.check_npy_ = np.load(self.check_npy_file_,allow_pickle=True).tolist()
+        print("Intrinsic matrix: " + str(self.check_npy_['cam_intrinsic_matrix_left']))
         print("Extrinsic matrix: " + str(self.check_npy_['cam_extrinsic_matrix_left']))
         self.rgb_np_ = self.check_npy_['img_0']['img_left']
         self.depth_np_ = self.check_npy_['img_0']['depth']
