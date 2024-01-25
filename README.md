@@ -57,7 +57,7 @@ cd ~/
 
 git clone https://github.com/mjd3/tracikpy.git
 
-pip install tracikpy/
+pip install tracikpy/ (You gotta run this in the ros_ws folder or do it with -e otherwise it is buggy)
 
 pip install kinpy
 
