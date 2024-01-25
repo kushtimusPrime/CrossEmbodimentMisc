@@ -49,6 +49,10 @@ mamba install ros-humble-desktop
 
 mamba install ros-humble-desktop-full
 
+sudo apt-get install ros-humble-gazebo-ros-pkgs
+
+Make sure libprotoc is 3.12.4 (should be default with ROS2 Humble)
+
 Tracikpy Installation Link: https://github.com/mjd3/tracikpy
 
 sudo apt-get install libeigen3-dev liborocos-kdl-dev libkdl-parser-dev liburdfdom-dev libnlopt-dev
